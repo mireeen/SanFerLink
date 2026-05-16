@@ -2,11 +2,19 @@ import React, { useState } from 'react';
 import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
-import { db } from '../comun/firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { COLORS } from '../comun/comun';
+import { connect } from 'react-redux';
+import { postAlerta } from '../redux/ActionCreators';
 
-export default function ReporteIncidenciaScreen() {
+const mapStateToProps = (state) => ({
+    userId: state.usuario.userId
+});
+
+const mapDispatchToProps = (dispatch) => ({
+    postAlerta: (tipo, descripcion, userId) => dispatch(postAlerta(tipo, descripcion, userId))
+});
+
+function ReporteIncidenciaScreen({ postAlerta, userId }) {
     // Estados locales para capturar los datos del formulario
     const [tipo, setTipo] = useState('Calle colapsada');
     const [descripcion, setDescripcion] = useState('');
@@ -14,25 +22,11 @@ export default function ReporteIncidenciaScreen() {
 
     const gestionarEnvio = async () => {
         if (!tipo) return;
-
         setEnviando(true);
         try {
-            // 1. Enviamos el documento a la colección "alertas" de Cloud Firestore
-            await addDoc(collection(db, 'alertas'), {
-                tipo: tipo,
-                descripcion: descripcion,
-                timestamp: serverTimestamp(), // Hora oficial de Firebase
-                fiabilidad: 'Alta', // Nivel inicial del algoritmo
-                userId: 'user_test_123', // Temporal, luego usaremos el ID real del dispositivo
-                // Coordenadas simuladas para la demo (Pamplona / Plaza del Castillo)
-                ubicacion: {
-                    latitude: 42.8161,
-                    longitude: -1.6432
-                }
-            });
-
-            Alert.alert('¡Éxito!', 'Alerta colaborativa enviada a SanFerLink.');
-            setDescripcion(''); //Limpiamos el formulario
+            await postAlerta(tipo, descripcion, userId);
+            Alert.alert('¡Éxito!', 'Alerta colaborativa enviada.');
+            setDescripcion('');
         } catch (error) {
             console.error("Error al enviar la incidencia: ", error);
             Alert.alert('Error', 'No se pudo enviar el reporte.');
@@ -122,3 +116,5 @@ const styles = StyleSheet.create({
         maxWidth: 280
     }
 });
+
+export default connect(mapStateToProps, mapDispatchToProps)(ReporteIncidenciaScreen);

@@ -1,18 +1,21 @@
+import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
-import ReporteIncidenciaScreen from './componentes/ReporteIncidenciaScreen';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import { ConfigureStore } from './redux/configureStore';
 
-//const store = ConfigureStore();
+import ReporteIncidenciaScreen from './componentes/ReporteIncidenciaScreen';
+
+const store = ConfigureStore();
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <View style={{ flex: 1 }}>
+    <Provider store={store}>
+      <SafeAreaProvider>
         <ReporteIncidenciaScreen />
-        <StatusBar style="auto" />
-      </View>
-    </SafeAreaProvider>
+      </SafeAreaProvider>
+    </Provider>
   );
 }
 
