@@ -1,12 +1,18 @@
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, Text, View } from 'react-native';
+import ReporteIncidenciaScreen from './componentes/ReporteIncidenciaScreen';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+//const store = ConfigureStore();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <SafeAreaProvider>
+      <View style={{ flex: 1 }}>
+        <ReporteIncidenciaScreen />
+        <StatusBar style="auto" />
+      </View>
+    </SafeAreaProvider>
   );
 }
 
