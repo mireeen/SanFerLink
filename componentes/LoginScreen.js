@@ -4,27 +4,37 @@ import { TextInput, Button, Text, HelperText } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import { COLORS } from '../comun/comun';
 
-// Importamos el Thunk asíncrono
-import { postRegistroFirebase } from '../redux/ActionCreators';
-
+// Importamos los dos Thunks de Firebase desde vuestro ActionCreators
+import { postLoginFirebase, postRegistroFirebase } from '../redux/ActionCreators';
 
 export default function LoginScreen() {
+  // Estados locales para los inputs y el modo de pantalla
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
+  const [esPantallaDeRegistro, setEsPantallaDeRegistro] = useState(false); // false = Login, true = Registro
 
   const dispatch = useDispatch();
 
-  // Escuchamos el sub-estado 'usuario' de nuestro almacén Redux
+  // Traemos los datos del sub-estado 'usuario' usando el Hook moderno useSelector
   const { isLoading, errMess, estaLogueado, datos } = useSelector((state) => state.usuario);
 
-  const manejarLogin = () => {
-    // Disparamos el Thunk clásico pasándole los inputs del formulario
-    dispatch(postRegistroFirebase(correo, contrasena));
+  const manejarBotonPrincipal = () => {
+    if (esPantallaDeRegistro) {
+      // Si estamos en modo registro, disparamos el Thunk de Registro
+      dispatch(postRegistroFirebase(correo, contrasena));
+    } else {
+      // Si no, disparamos el Thunk de Iniciar Sesión
+      dispatch(postLoginFirebase(correo, contrasena));
+    }
   };
 
   return (
     <View style={styles.contenedor}>
-      <Text variant="headlineMedium" style={styles.titulo}>Iniciar Sesión</Text>
+      
+      {/* El título cambia solo según el estado booleano */}
+      <Text variant="headlineMedium" style={styles.titulo}>
+        {esPantallaDeRegistro ? 'Crear Cuenta' : 'Iniciar Sesión'}
+      </Text>
 
       <TextInput
         label="Correo electrónico"
@@ -47,24 +57,37 @@ export default function LoginScreen() {
         style={styles.input}
       />
 
-      {/* Si hay un error guardado en el Reducer, lo pintamos aquí en rojo */}
+      {/* Si Firebase nos escupe un error, Redux lo guarda y useSelector lo pinta aquí */}
       {errMess && (
         <HelperText type="error" visible={true} style={styles.errorText}>
           {errMess}
         </HelperText>
       )}
 
-      {/* Si está cargando mostramos una ruedecita, si no, el botón */}
+      {/* Rueda de carga si está haciendo el fetch, si no, botones */}
       {isLoading ? (
         <ActivityIndicator size="large" color={COLORS.primary} style={styles.loader} />
       ) : (
-        <Button mode="contained" onPress={manejarLogin} style={styles.boton}>
-          Entrar
-        </Button>
+        <View>
+          <Button mode="contained" onPress={manejarBotonPrincipal} style={styles.boton}>
+            {esPantallaDeRegistro ? 'Registrarse' : 'Entrar'}
+          </Button>
+
+          {/* Botón plano para alternar el modo de la pantalla */}
+          <Button 
+            mode="text" 
+            onPress={() => setEsPantallaDeRegistro(!esPantallaDeRegistro)} 
+            style={styles.botonCambio}
+          >
+            {esPantallaDeRegistro 
+              ? '¿Ya tienes cuenta? Inicia sesión aquí' 
+              : '¿No tienes cuenta aún? Regístrate aquí'}
+          </Button>
+        </View>
       )}
 
-      {/* Cartel flotante temporal para validar que te ha logueado en Redux */}
-      {estaLogueado && (
+      {/* Mensaje flotante de éxito temporal */}
+      {estaLogueado && datos && (
         <Text style={styles.successText}>¡Conectado como: {datos.email}!</Text>
       )}
     </View>
@@ -76,6 +99,7 @@ const styles = StyleSheet.create({
   titulo: { textAlign: 'center', marginBottom: 30, color: COLORS.primary, fontWeight: 'bold' },
   input: { marginBottom: 12 },
   boton: { marginTop: 10, paddingVertical: 4 },
+  botonCambio: { marginTop: 15 },
   loader: { marginTop: 15 },
   errorText: { marginBottom: 10 },
   successText: { textAlign: 'center', marginTop: 20, color: 'green', fontWeight: 'bold' }

@@ -3,33 +3,64 @@ import { View, StyleSheet, Alert } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import { Picker } from '@react-native-picker/picker';
 import { COLORS } from '../comun/comun';
-import { connect } from 'react-redux';
-import { postAlerta } from '../redux/ActionCreators';
 
-const mapStateToProps = (state) => ({
-    userId: state.usuario.userId
-});
+// Importamos los Hooks modernos de Redux en vez de connect
+import { useDispatch, useSelector } from 'react-redux';
+import { postAlertaRTDB } from '../redux/ActionCreators';
 
-const mapDispatchToProps = (dispatch) => ({
-    postAlerta: (tipo, descripcion, userId) => dispatch(postAlerta(tipo, descripcion, userId))
-});
+// Importamos la librería nativa de localización de Expo
+import * as Location from 'expo-location';
 
-function ReporteIncidenciaScreen({ postAlerta, userId }) {
-    // Estados locales para capturar los datos del formulario
+export default function ReporteIncidenciaScreen() {
+    // 1. GANCHOS MODERNOS DE REDUX
+    const dispatch = useDispatch();
+    
+    // Leemos el userId (o email) del estado global de usuario
+    const { datos } = useSelector((state) => state.usuario);
+    const userId = datos?.uid || 'anonimo'; // Evitamos crasheos si no hay UID
+
+    // 2. ESTADOS LOCALES PARA EL FORMULARIO
     const [tipo, setTipo] = useState('Calle colapsada');
     const [descripcion, setDescripcion] = useState('');
     const [enviando, setEnviando] = useState(false);
 
+    // 3. LOGICA DE CAPTURA GPS Y ENVÍO A FIREBASE
     const gestionarEnvio = async () => {
         if (!tipo) return;
+        
+        if (descripcion.trim() === '') {
+            Alert.alert('Faltan datos', 'Por favor, añade algún detalle sobre lo que pasa.');
+            return;
+        }
+
         setEnviando(true);
+
         try {
-            await postAlerta(tipo, descripcion, userId);
-            Alert.alert('¡Éxito!', 'Alerta colaborativa enviada.');
-            setDescripcion('');
+            // A. Solicitar permisos de localización al sistema operativo del móvil
+            let { status } = await Location.requestForegroundPermissionsAsync();
+            if (status !== 'granted') {
+                Alert.alert(
+                    'Permiso denegado 📍', 
+                    'Necesitamos tu localización para colocar la incidencia en el mapa de San Fermín.'
+                );
+                setEnviando(false);
+                return;
+            }
+
+            // B. Obtener las coordenadas actuales (Hardware GPS)
+            let ubicacion = await Location.getCurrentPositionAsync({});
+            const { latitude, longitude } = ubicacion.coords;
+
+            // C. Disparar el Thunk con los datos combinados (Formulario + GPS + Usuario)
+            // Usamos `postAlertaRTDB` que acepta latitud/longitud y userEmail
+            await dispatch(postAlertaRTDB(tipo, descripcion, latitude, longitude, userId));
+            
+            Alert.alert('¡Éxito!', 'Alerta colaborativa enviada y fijada en el mapa.');
+            setDescripcion(''); // Reseteamos la caja de texto
+            
         } catch (error) {
             console.error("Error al enviar la incidencia: ", error);
-            Alert.alert('Error', 'No se pudo enviar el reporte.');
+            Alert.alert('Error', 'No se pudo enviar el reporte. Revisa tu conexión.');
         } finally {
             setEnviando(false);
         }
@@ -44,6 +75,7 @@ function ReporteIncidenciaScreen({ postAlerta, userId }) {
                 <Picker
                     selectedValue={tipo}
                     onValueChange={(itemValue) => setTipo(itemValue)}
+                    enabled={!enviando}
                 >
                     <Picker.Item label="Calle colapsada / Masificación" value="Calle colapsada" />
                     <Picker.Item label="Presencia Policial / Control" value="Policía" />
@@ -60,7 +92,10 @@ function ReporteIncidenciaScreen({ postAlerta, userId }) {
                 onChangeText={setDescripcion}
                 multiline
                 numberOfLines={4}
+                disabled={enviando}
                 style={styles.input}
+                outlineColor="#ccc"
+                activeOutlineColor={COLORS.primary}
             />
 
             <Button
@@ -71,12 +106,13 @@ function ReporteIncidenciaScreen({ postAlerta, userId }) {
                 style={styles.boton}
                 buttonColor={COLORS.primary}
             >
-                Enviar Alerta
+                {enviando ? 'Obteniendo GPS...' : 'Enviar Alerta'}
             </Button>
         </View>
     );
 }
 
+// Mantenemos exactamente vuestros estilos originales
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -102,11 +138,12 @@ const styles = StyleSheet.create({
         borderColor: '#ccc',
         borderRadius: 8,
         marginBottom: 15,
-        overflow: 'hidden'
+        overflow: 'hidden',
+        backgroundColor: '#fff'
     },
     input: {
         marginBottom: 20,
-        backgroundColor: COLORS.background
+        backgroundColor: '#fff'
     },
     boton: {
         marginTop: 14,
@@ -116,5 +153,3 @@ const styles = StyleSheet.create({
         maxWidth: 280
     }
 });
-
-export default connect(mapStateToProps, mapDispatchToProps)(ReporteIncidenciaScreen);
