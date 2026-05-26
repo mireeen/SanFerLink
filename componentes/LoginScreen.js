@@ -30,7 +30,7 @@ export default function LoginScreen() {
 
   return (
     <View style={styles.contenedor}>
-      
+
       {/* El título cambia solo según el estado booleano */}
       <Text variant="headlineMedium" style={styles.titulo}>
         {esPantallaDeRegistro ? 'Crear Cuenta' : 'Iniciar Sesión'}
@@ -74,13 +74,13 @@ export default function LoginScreen() {
           </Button>
 
           {/* Botón plano para alternar el modo de la pantalla */}
-          <Button 
-            mode="text" 
-            onPress={() => setEsPantallaDeRegistro(!esPantallaDeRegistro)} 
+          <Button
+            mode="text"
+            onPress={() => setEsPantallaDeRegistro(!esPantallaDeRegistro)}
             style={styles.botonCambio}
           >
-            {esPantallaDeRegistro 
-              ? '¿Ya tienes cuenta? Inicia sesión aquí' 
+            {esPantallaDeRegistro
+              ? '¿Ya tienes cuenta? Inicia sesión aquí'
               : '¿No tienes cuenta aún? Regístrate aquí'}
           </Button>
         </View>

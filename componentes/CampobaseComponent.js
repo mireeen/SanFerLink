@@ -30,7 +30,7 @@ const Tab = createBottomTabNavigator();
 
 // Mapeamos el estado global de Redux
 const mapStateToProps = (state) => ({
-  usuario: state.usuario 
+  usuario: state.usuario
 });
 
 // Mapeamos la acción para inyectar el Thunk de presencia
@@ -43,10 +43,10 @@ class Campobase extends Component {
     super(props);
     this.state = {
       // Estado local para recordar el foco actual del móvil (active/background)
-      appStateActual: AppState.currentState 
+      appStateActual: AppState.currentState
     };
   }
-  
+
   componentDidMount() {
     // 2. Iniciamos el escuchador nativo del teléfono
     this.appStateSubscription = AppState.addEventListener('change', this.controlarCambioAppState);
@@ -57,7 +57,7 @@ class Campobase extends Component {
     if (this.appStateSubscription) {
       this.appStateSubscription.remove();
     }
-    
+
     // Si destruyen la app del todo, intentamos marcar offline de emergencia
     const { estaLogueado, datos } = this.props.usuario;
     if (estaLogueado && datos?.uid) {
@@ -71,12 +71,12 @@ class Campobase extends Component {
 
     // Solo interactuamos con Firebase si hay una sesión activa en Redux
     if (estaLogueado && datos?.uid) {
-      
+
       // CASO A: El usuario regresa a la app (Background ➡️ Active)
       if (this.state.appStateActual.match(/inactive|background/) && siguienteAppState === 'active') {
         this.props.cambiarPresencia(datos.uid, 'online');
-      } 
-      
+      }
+
       // CASO B: El usuario bloquea el móvil o abre otra app (Active ➡️ Background)
       else if (siguienteAppState === 'background') {
         this.props.cambiarPresencia(datos.uid, 'offline');
@@ -178,7 +178,7 @@ class Campobase extends Component {
     return (
       <NavigationContainer>
         <View style={{ flex: 1, paddingTop: Platform.OS === 'ios' ? 0 : Constants.statusBarHeight }}>
-          
+
           {estaLogueado ? (
             <this.BottomTabNavegador />
           ) : (
