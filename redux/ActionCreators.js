@@ -175,27 +175,62 @@ export const alertasFailed = (errmess) => ({ type: ActionTypes.ALERTAS_FAILED, p
 export const addAlertas = (alertas) => ({ type: ActionTypes.ADD_ALERTAS, payload: alertas });
 export const addNuevaAlertaLocal = (alerta) => ({ type: ActionTypes.ADD_NUEVA_ALERTA_LOCAL, payload: alerta });
 
-// THUNK 1: RECTIVADO EN TIEMPO REAL
+// THUNK 1: FETCH ALERTAS REFACTORIZADO CON ALGORITMO DE FIABILIDAD EN TIEMPO REAL
 export const fetchAlertas = () => (dispatch) => {
     dispatch(alertasLoading());
 
-    // 1. Creamos la referencia apuntando al nodo 'alertas' de la RTDB
-    const alertasRef = ref(rtdb, 'alertas');
+    // 1. Escuchamos el nodo global de la base de datos (raíz) para traer alertas y presencia a la vez
+    const dbRef = ref(rtdb);
 
     // 2. Activamos el escuchador 'onValue'. 
     // Cada vez que cambie algo en la base de datos, esta función se ejecuta sola automáticamente.
-    onValue(alertasRef, (snapshot) => {
-        const alertasJson = snapshot.val();
+    onValue(dbRef, (snapshot) => {
+        const dataJson = snapshot.val() || {};
+        const alertasJson = dataJson.alertas || {};
+        const presenciaJson = dataJson.presencia || {};
+        const arrayAlertasCalculadas = [];
+        const ahora = new Date();
 
-        const arrayAlertas = [];
-        if (alertasJson) {
-            Object.keys(alertasJson).forEach(key => {
-                arrayAlertas.push({ ...alertasJson[key], id: key });
-            });
-        }
+        // 2. RECORREMOS CADA ALERTA PARA APLICAR EL ALGORITMO
+        Object.keys(alertasJson).forEach(key => {
+            const alerta = alertasJson[key];
+            const emisorId = alerta.userId;
 
-        // Despachamos las alertas actualizadas al Store de Redux para que el mapa se repinte solo
-        dispatch(addAlertas(arrayAlertas));
+            //Averiguamos si el creador está 'online', 'background' o si no existe ('offline')
+            const estadoCreador = presenciaJson[emisorId]?.estado || 'offline';
+
+            // Calcular el tiempo transcurrido en minutos desde que se reportó (o validó)
+            const tiempoCreado = new Date(alerta.timestamp);
+            const diferenciaMinutos = (ahora - tiempoCreado) / (1000 * 60);
+
+            //Multiplicador de presencia: Si está offline/background, el tiempo "pesa" el doble (degradación rápida)
+            const factorVelocidad = (estadoCreador === 'online') ? 1 : 2;
+            const minutosVirtuales = diferenciaMinutos * factorVelocidad;
+
+            //Clasificación de los niveles de fiabilidad basados en el tiempo
+            let fiabilidadCalculada = 'Alta';
+
+            if (minutosVirtuales > 15) {
+                fiabilidadCalculada = 'Obsoleta'; //Eliminación automática
+            } else if (minutosVirtuales > 10) {
+                fiabilidadCalculada = 'Baja';
+            } else if (minutosVirtuales > 5) {
+                fiabilidadCalculada = 'Media';
+            }
+
+            //Si no está obsoleta, la metemos en el mapa; si está obsoleta, se ignora
+            if (fiabilidadCalculada !== 'Obsoleta') {
+                arrayAlertasCalculadas.push({
+                    ...alerta,
+                    id: key,
+                    fiabilidad: fiabilidadCalculada // Machacamos la fiabilidad con el cálculo del algoritmo
+                });
+            }
+        });
+
+
+        // Despachamos las alertas con la fiabilidad calculada en vivo al Store de Redux
+        dispatch(addAlertas(arrayAlertasCalculadas));
     }, (error) => {
         dispatch(alertasFailed(error.message));
     });
@@ -233,7 +268,8 @@ export const postAlertaRTDB = (tipo, descripcion, latitud, longitud, userId) => 
             const alertaFinal = { ...nuevaAlerta, id: data.name };
 
             // Despachamos la acción local para que Redux meta el punto en el array al instante
-            dispatch(addNuevaAlertaLocal(alertaFinal));
+            //dispatch(addNuevaAlertaLocal(alertaFinal));
+            console.log('¡Alerta subida con éxito! El escuchador reactivo onValue la pintará ahora.');
         })
         .catch(error => {
             console.log('Error al reportar en Firebase:', error.message);

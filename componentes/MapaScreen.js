@@ -61,7 +61,7 @@ export default function MapaScreen() {
         showsMyLocationButton={true}
       >
         {alertas.map((alerta) => {
-          const nivelFiabilidad = alerta.fiabilidad || 'Alta';
+          const nivelFiabilidad = alerta.fiabilidad;
           const colorPin = obtenerColorFiabilidad(nivelFiabilidad);
 
           return (
