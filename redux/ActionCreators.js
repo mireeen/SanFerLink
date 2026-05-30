@@ -1,7 +1,7 @@
 import * as ActionTypes from './ActionTypes';
 import { rtdb, db, firebaseConfig } from '../comun/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { ref, onValue } from 'firebase/database';
+import { ref, onValue, set, onDisconnect } from 'firebase/database';
 
 
 export const postAlerta = (tipo, descripcion, userId) => async (dispatch) => {
@@ -242,18 +242,35 @@ export const postAlertaRTDB = (tipo, descripcion, latitud, longitud, userId) => 
         });
 };
 
-// 🔥 THUNK C: ACTUALIZAR PRESENCIA (APPSTATE) 🔥
+// THUNK C: ACTUALIZAR PRESENCIA (APPSTATE Y ONDISCONNECT)
 export const actualizarPresencia = (userId, estado) => (dispatch) => {
+    // 1. Creamos la referencia al nodo de presencia de este usuario en concreto
+    const presenciaRef = ref(rtdb, `presencia/${userId}`);
+
     const datosPresencia = {
         estado: estado, // 'online' o 'offline'
         ultimoAcceso: new Date().toISOString()
     };
 
+    // 2. CONFIGURACIÓN DEL CHECKPOINT: Le programamos la orden de emergencia al servidor
+    if (estado === 'online') {
+        // Le decimos a Firebase: "Si este usuario que se acaba de conectar se cae de la red,
+        // machaca su nodo y ponlo en offline automáticamente con la hora del corte".
+        onDisconnect(presenciaRef).set({
+            estado: 'offline',
+            ultimoAcceso: new Date().toISOString()
+        });
+    }
+
+    // 3. Hacemos la actualización normal del estado actual utilizando 'set' nativo (más eficiente que fetch)
+    return set(presenciaRef, datosPresencia)
+        .catch(error => console.log('Error enviando presencia:', error.message));
+
     // Apuntamos al nodo /presencia/userId.json usando un PUT para machacar el estado previo
-    return fetch(`${firebaseConfig.databaseURL}presencia/${userId}.json`, {
+    /*return fetch(`${firebaseConfig.databaseURL}presencia/${userId}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datosPresencia)
     })
-        .catch(error => console.log('Error enviando presencia:', error.message));
+        .catch(error => console.log('Error enviando presencia:', error.message));*/
 };

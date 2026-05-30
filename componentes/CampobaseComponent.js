@@ -79,7 +79,7 @@ class Campobase extends Component {
 
       // CASO B: El usuario bloquea el móvil o abre otra app (Active ➡️ Background)
       else if (siguienteAppState === 'background') {
-        this.props.cambiarPresencia(datos.uid, 'offline');
+        this.props.cambiarPresencia(datos.uid, 'background');
       }
     }
 
