@@ -189,7 +189,6 @@ export const fetchAlertas = () => (dispatch) => {
         const alertasJson = dataJson.alertas || {};
         const presenciaJson = dataJson.presencia || {};
         const arrayAlertasCalculadas = [];
-        const ahora = new Date();
 
         // 2. RECORREMOS CADA ALERTA PARA APLICAR EL ALGORITMO
         Object.keys(alertasJson).forEach(key => {
@@ -199,9 +198,14 @@ export const fetchAlertas = () => (dispatch) => {
             //Averiguamos si el creador está 'online', 'background' o si no existe ('offline')
             const estadoCreador = presenciaJson[emisorId]?.estado || 'offline';
 
-            // Calcular el tiempo transcurrido en minutos desde que se reportó (o validó)
-            const tiempoCreado = new Date(alerta.timestamp);
-            const diferenciaMinutos = (ahora - tiempoCreado) / (1000 * 60);
+            //Si alguien ha validado la alerta, el temporizador usa la hora del último voto.
+            // Si nadie ha votado aún, usamos el timestamp de creación original.
+            const horaReferenciaAlgoritmo = alerta.ultimoVotoTimestamp || alerta.timestamp;
+
+            const tiempoReferencia = new Date(horaReferenciaAlgoritmo);
+            const ahora = new Date();
+            const diferenciaMinutos = (ahora - tiempoReferencia) / (1000 * 60);
+
 
             //Multiplicador de presencia: Si está offline/background, el tiempo "pesa" el doble (degradación rápida)
             const factorVelocidad = (estadoCreador === 'online') ? 1 : 2;
@@ -309,4 +313,28 @@ export const actualizarPresencia = (userId, estado) => (dispatch) => {
         body: JSON.stringify(datosPresencia)
     })
         .catch(error => console.log('Error enviando presencia:', error.message));*/
+};
+
+// THUNK D: VALIDAR INCIDENCIA ("SIGUE AHÍ")
+export const validarIncidenciaRTDB = (alertaId) => (dispatch) => {
+    // Generamos la marca de tiempo con la hora exacta del botón en formato ISO
+    const horaVoto = new Date().toISOString();
+
+    // Hacemos una petición HTTP PATCH para modificar SOLO el campo del timestamp de validación
+    // sin borrar la descripción, el creador o el tipo original de la alerta.
+    return fetch(`${baseUrlDb}alertas/${alertaId}.json`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            ultimoVotoTimestamp: horaVoto
+        })
+    })
+        .then(response => {
+            if (response.ok) {
+                console.log(`[Validación] Alerta ${alertaId} relanzada a Fiabilidad Alta con éxito.`);
+                return response;
+            }
+            throw new Error('No se pudo registrar la validación');
+        })
+        .catch(error => console.log('Error al validar la incidencia:', error.message));
 };
