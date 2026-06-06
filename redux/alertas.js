@@ -3,11 +3,18 @@ import * as ActionTypes from './ActionTypes';
 export const alertas = (state = { 
     isLoading: true,
     errMess: null,
-    alertas: [] 
+    alertas: [],
+    banos: []
 }, action) => {
     switch (action.type) {
         case ActionTypes.ADD_ALERTAS:
-            return { ...state, isLoading: false, errMess: null, alertas: action.payload };
+            return { 
+                ...state, 
+                isLoading: false, 
+                errMess: null, 
+                alertas: action.payload.alertas || action.payload,
+                banos: action.payload.banos || state.banos
+            };
 
         case ActionTypes.ALERTAS_LOADING:
             return { ...state, isLoading: true, errMess: null, alertas: [] };

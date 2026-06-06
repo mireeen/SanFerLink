@@ -10,6 +10,7 @@ import { connect } from 'react-redux';
 
 // --- Importaciones de vuestros componentes/pantallas ---
 import LoginScreen from './LoginScreen';
+import EventosScreen from './EventoScreen';
 import MapaScreen from './MapaScreen';
 import ReporteIncidenciaScreen from './ReporteIncidenciaScreen';
 import PerfilScreen from './PerfilScreen'; // ⬅️ Nueva pantalla de perfil
@@ -100,19 +101,26 @@ class Campobase extends Component {
   // --- Navegadores de Pestañas (Stack Navigators) ---
   MapaNavegador = () => (
     <Stack.Navigator screenOptions={styles.opcionesHeader}>
-      <Stack.Screen name="MapaSanFermin" component={MapaScreen} options={{ title: 'Mapa Realtime' }} />
+      <Stack.Screen 
+        name="MapaSanFermin" 
+        component={MapaScreen} 
+        options={{ 
+          title: 'Mapa de Pamplona',
+          headerTitleAlign: 'center'
+        }} 
+      />
     </Stack.Navigator>
   );
 
   AlertasNavegador = () => (
     <Stack.Navigator screenOptions={styles.opcionesHeader}>
-      <Stack.Screen name="ReportarIncidente" component={ReporteIncidenciaScreen} options={{ title: 'Reportar Incidencia' }} />
+      <Stack.Screen name="ReportarIncidente" component={ReporteIncidenciaScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 
   EventosNavegador = () => (
     <Stack.Navigator screenOptions={styles.opcionesHeader}>
-      <Stack.Screen name="ListaEventos" component={() => <VistaTemporal texto="Programa de Fiestas 📅" />} options={{ title: 'Eventos' }} />
+      <Stack.Screen name="Eventos" component={EventosScreen} options={{ headerShown: false }}/>
     </Stack.Navigator>
   );
 
@@ -135,6 +143,14 @@ class Campobase extends Component {
           tabBarStyle: { backgroundColor: '#ffffff' }
         }}
       >
+         <Tab.Screen
+          name="EventosTab"
+          component={this.EventosNavegador}
+          options={{
+            title: 'Eventos',
+            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="calendar-text" color={color} size={size} />,
+          }}
+        />
         <Tab.Screen
           name="MapaTab"
           component={this.MapaNavegador}
@@ -151,14 +167,7 @@ class Campobase extends Component {
             tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="alert-circle" color={color} size={size} />,
           }}
         />
-        <Tab.Screen
-          name="EventosTab"
-          component={this.EventosNavegador}
-          options={{
-            title: 'Eventos',
-            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="calendar-text" color={color} size={size} />,
-          }}
-        />
+       
         {/* 6. Inyectamos la pestaña de perfil en el menú inferior */}
         <Tab.Screen
           name="PerfilTab"

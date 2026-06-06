@@ -1,28 +1,60 @@
 import React, { useEffect } from 'react';
-import { StyleSheet, View, ActivityIndicator, Text, Modal, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, ActivityIndicator, Text, Modal, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAlertas } from '../redux/ActionCreators';
+import { fetchAlertas, validarIncidenciaRTDB, validarIncidenciaBanoRTDB } from '../redux/ActionCreators';
 import { COLORS } from '../comun/comun';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import * as Location from 'expo-location';
+
+// Helper function to calculate distance in meters between two GPS coordinates
+const calcularDistanciaMetros = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // Radio de la Tierra en metros
+  const phi1 = lat1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+  const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
+    Math.cos(phi1) * Math.cos(phi2) *
+    Math.sin(deltaLambda / 2) * Math.sin(deltaLambda / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+  return R * c;
+};
 
 export default function MapaScreen() {
   const dispatch = useDispatch();
   const [pinSeleccionado, setPinSeleccionado] = React.useState(null);
+  const [userLocation, setUserLocation] = React.useState(null);
+  const [alertasValidadasLocales, setAlertasValidadasLocales] = React.useState([]);
 
-  // Escuchamos el estado global de alertas
-  const { alertas, isLoading } = useSelector((state) => state.alertas);
+  // Escuchamos el estado global de alertas, baños y del usuario logueado
+  const { alertas, banos, isLoading } = useSelector((state) => state.alertas);
+  const { datos: usuarioDatos } = useSelector((state) => state.usuario);
+  const loggedInUserId = usuarioDatos?.uid || 'anonimo';
 
-  // Al cargar el mapa por primera vez, descargamos los puntos de Firebase
+  // Al cargar el mapa por primera vez, descargamos los puntos de Firebase y pedimos localización
   useEffect(() => {
     dispatch(fetchAlertas());
+
+    // Obtener la posición del usuario en tiempo real (GPS)
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.log('Permiso de localización denegado 📍');
+        return;
+      }
+      try {
+        let location = await Location.getCurrentPositionAsync({});
+        setUserLocation(location.coords);
+      } catch (error) {
+        console.error("Error obteniendo localización:", error);
+      }
+    })();
   }, [dispatch]);
 
-  // Debug: muestra si hay alertas cargadas
-  useEffect(() => {
-    console.log('📍 Alertas en MapaScreen:', alertas);
-  }, [alertas]);
-
+  // Helpers de estilos y opacidad
   const obtenerColorFiabilidad = (fiabilidad) => {
     switch (fiabilidad) {
       case 'Alta': return COLORS.alertaAlta;
@@ -37,11 +69,60 @@ export default function MapaScreen() {
     switch (tipo) {
       case 'Calle colapsada': return 'account-group';
       case 'Policía': return 'shield-account';
+      case 'Baño':
       case 'Baño lleno': return 'toilet';
+      case 'Evento':
       case 'Evento cancelado': return 'calendar-remove';
       default: return 'alert';
     }
   };
+
+  const obtenerOpacidadFiabilidad = (fiabilidad) => {
+    switch (fiabilidad) {
+      case 'Alta': return 1.0;
+      case 'Media': return 0.6;
+      case 'Baja': return 0.3;
+      default: return 1.0;
+    }
+  };
+
+  // 1. Cálculo de proximidad y validación para el modal activo
+  const esBano = pinSeleccionado && pinSeleccionado.lat !== undefined;
+  const tieneIncidenciaBano = esBano && !!pinSeleccionado.incidencia;
+  const esCalleColapsada = pinSeleccionado && pinSeleccionado.tipo === 'Calle colapsada';
+  const esAlerta = pinSeleccionado && (!!pinSeleccionado.timestamp || tieneIncidenciaBano);
+  
+  const esCreador = pinSeleccionado && (
+    esBano 
+      ? (tieneIncidenciaBano && loggedInUserId === pinSeleccionado.incidencia.userId)
+      : (loggedInUserId === pinSeleccionado.userId)
+  );
+
+  const distancia = (pinSeleccionado && userLocation) ? calcularDistanciaMetros(
+    userLocation.latitude,
+    userLocation.longitude,
+    pinSeleccionado.latitud || pinSeleccionado.lat,
+    pinSeleccionado.longitud || pinSeleccionado.lng
+  ) : Infinity;
+
+  const puedeValidar = esCalleColapsada && !esCreador && (distancia < 100);
+  const puedeValidarBano = tieneIncidenciaBano && !esCreador && (distancia < 100);
+
+  // 2. Buscar si hay alguna alerta de calle colapsada cercana en el mapa para mostrar la tarjeta flotante directa
+  const alertaCercana = alertas.find((alerta) => {
+    if (alerta.tipo !== 'Calle colapsada') return false;
+    if (loggedInUserId === alerta.userId) return false;
+    if (alertasValidadasLocales.includes(alerta.id)) return false; // Ocultar si ya fue validada en esta sesión
+    if (!userLocation) return false;
+
+    const dist = calcularDistanciaMetros(
+      userLocation.latitude,
+      userLocation.longitude,
+      alerta.latitud,
+      alerta.longitud
+    );
+    return dist < 100;
+  });
 
   return (
     <View style={styles.contenedor}>
@@ -60,9 +141,31 @@ export default function MapaScreen() {
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
-        {alertas.map((alerta) => {
-          const nivelFiabilidad = alerta.fiabilidad;
-          const colorPin = obtenerColorFiabilidad(nivelFiabilidad);
+        {/* Renderizado de Baños Públicos (azul si normal, naranja si tiene incidencia activa) */}
+        {banos && banos.map((b) => (
+          <Marker
+            key={`bano-${b.id}`}
+            coordinate={{
+              latitude: b.lat,
+              longitude: b.lng,
+            }}
+            pinColor={b.incidencia ? 'orange' : 'blue'}
+            onPress={() => {
+              setPinSeleccionado(b);
+            }}
+          />
+        ))}
+
+        {/* Renderizado de Alertas Colaborativas con Opacidad Dinámica (Excluyendo Eventos) */}
+        {alertas.filter(alerta => alerta.tipo !== 'Evento' && alerta.tipo !== 'Evento cancelado' && alerta.tipo !== 'Evento trasladado').map((alerta) => {
+          // Si no tiene coordenadas, no se pinta en el mapa
+          if (alerta.latitud === undefined || alerta.latitud === null || alerta.longitud === undefined || alerta.longitud === null) {
+            return null;
+          }
+
+          const esCalleColapsadaAlerta = alerta.tipo === 'Calle colapsada';
+          const pinColor = esCalleColapsadaAlerta ? 'red' : 'orange';
+          const opacidad = obtenerOpacidadFiabilidad(alerta.fiabilidad);
 
           return (
             <Marker
@@ -71,9 +174,9 @@ export default function MapaScreen() {
                 latitude: alerta.latitud,
                 longitude: alerta.longitud,
               }}
-              pinColor={colorPin}
+              pinColor={pinColor}
+              opacity={opacidad}
               onPress={() => {
-                console.log('📍 Pin pulsado:', alerta.id, alerta.tipo);
                 setPinSeleccionado(alerta);
               }}
             />
@@ -81,7 +184,31 @@ export default function MapaScreen() {
         })}
       </MapView>
 
-      {/* Modal para mostrar los detalles de la alerta */}
+      {/* ⚠️ TARJETA FLOTANTE PROACTIVA: Aparece directamente en el mapa si estás cerca de una calle colapsada */}
+      {alertaCercana && (
+        <View style={styles.tarjetaFlotante}>
+          <Text style={styles.tarjetaFlotanteTitulo}>⚠️ Calle Colapsada Cercana</Text>
+          <Text style={styles.tarjetaFlotanteDescripcion}>
+            {alertaCercana.descripcion || 'Sin descripción adicional'}
+          </Text>
+          <Text style={styles.tarjetaFlotantePregunta}>¿Sigue la calle colapsada?</Text>
+          <TouchableOpacity
+            style={styles.tarjetaFlotanteBoton}
+            onPress={() => {
+              dispatch(validarIncidenciaRTDB(alertaCercana.id));
+              setAlertasValidadasLocales((prev) => [...prev, alertaCercana.id]);
+              Alert.alert(
+                "¡Incidencia Validada! 👍",
+                "Has confirmado que la calle sigue colapsada y su fiabilidad ha sido restaurada."
+              );
+            }}
+          >
+            <Text style={styles.tarjetaFlotanteBotonTexto}>👍 Sigue ahí</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Modal para mostrar los detalles del elemento pulsado (Baño o Alerta) */}
       <Modal
         visible={pinSeleccionado !== null}
         transparent={true}
@@ -97,35 +224,100 @@ export default function MapaScreen() {
 
           {pinSeleccionado && (
             <View style={styles.modalContent}>
+              <View style={styles.barraArrastreModal} />
               <View style={styles.calloutBox}>
                 <View style={styles.contenedorTituloModal}>
-                  {/* Inyectamos el icono dinámico con el color corporativo rojo San Fermín */}
                   <MaterialCommunityIcons
-                    name={obtenerIconoIncidencia(pinSeleccionado.tipo)}
+                    name={esBano ? 'toilet' : obtenerIconoIncidencia(pinSeleccionado.tipo)}
                     size={26}
-                    color={COLORS.primary || '#B21E29'}
+                    color={esBano ? (tieneIncidenciaBano ? 'orange' : 'blue') : (COLORS.primary || '#B21E29')}
                     style={styles.iconoModal}
                   />
 
                   <Text style={styles.tituloAlertaNativo}>
-                    {pinSeleccionado.tipo}
+                    {esBano ? `Aseo: ${pinSeleccionado.name}` : (pinSeleccionado.calle || pinSeleccionado.tipo)}
                   </Text>
                 </View>
 
-                <Text
-                  style={[
-                    styles.subtituloAlertaNativo,
-                    { color: obtenerColorFiabilidad(pinSeleccionado.fiabilidad || 'Alta') },
-                  ]}
-                >
-                  Fiabilidad: {pinSeleccionado.fiabilidad || 'Alta'}
-                </Text>
-                <Text style={styles.descripcionNativa}>
-                  {pinSeleccionado.descripcion || 'Sin descripción adicional'}
-                </Text>
+                {esBano ? (
+                  tieneIncidenciaBano ? (
+                    <>
+                      <Text
+                        style={[
+                          styles.subtituloAlertaNativo,
+                          { color: obtenerColorFiabilidad(pinSeleccionado.incidencia.fiabilidad || 'Alta') },
+                        ]}
+                      >
+                        Fiabilidad: {pinSeleccionado.incidencia.fiabilidad || 'Alta'}
+                      </Text>
+                      <Text style={styles.descripcionNativa}>
+                        {pinSeleccionado.incidencia.descripcion || 'Sin descripción adicional'}
+                      </Text>
+                    </>
+                  ) : (
+                    <Text style={styles.descripcionNativa}>
+                      Aseo público portátil instalado para la semana de fiestas de San Fermín.
+                    </Text>
+                  )
+                ) : (
+                  <>
+                    <Text
+                      style={[
+                        styles.subtituloAlertaNativo,
+                        { color: obtenerColorFiabilidad(pinSeleccionado.fiabilidad || 'Alta') },
+                      ]}
+                    >
+                      Fiabilidad: {pinSeleccionado.fiabilidad || 'Alta'}
+                    </Text>
+                    <Text style={styles.descripcionNativa}>
+                      {pinSeleccionado.descripcion || 'Sin descripción adicional'}
+                    </Text>
+                  </>
+                )}
+
+                {/* Sección de Validación Colaborativa por cercanía para Calles Colapsadas */}
+                {puedeValidar && (
+                  <View style={styles.contenedorValidacionModal}>
+                    <Text style={styles.preguntaModal}>¿Sigue la calle colapsada?</Text>
+                    <TouchableOpacity
+                      style={styles.botonValidarModal}
+                      onPress={() => {
+                        dispatch(validarIncidenciaRTDB(pinSeleccionado.id));
+                        setAlertasValidadasLocales((prev) => [...prev, pinSeleccionado.id]);
+                        Alert.alert(
+                          "¡Incidencia Validada! 👍",
+                          "Has confirmado que la calle sigue colapsada y su fiabilidad ha sido restaurada."
+                        );
+                        setPinSeleccionado(null);
+                      }}
+                    >
+                      <Text style={styles.textoBotonClaridad || styles.textoBotonValidar}>👍 Sigue ahí</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                {/* Sección de Validación Colaborativa por cercanía para Baños */}
+                {puedeValidarBano && (
+                  <View style={styles.contenedorValidacionModal}>
+                    <Text style={styles.preguntaModal}>¿Sigue habiendo incidencia en el baño?</Text>
+                    <TouchableOpacity
+                      style={styles.botonValidarModal}
+                      onPress={() => {
+                        dispatch(validarIncidenciaBanoRTDB(pinSeleccionado.id));
+                        Alert.alert(
+                          "¡Incidencia Validada! 👍",
+                          "Has confirmado que la incidencia sigue ahí y su fiabilidad ha sido restaurada."
+                        );
+                        setPinSeleccionado(null);
+                      }}
+                    >
+                      <Text style={styles.textoBotonClaridad || styles.textoBotonValidar}>👍 Sigue ahí</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
 
                 <TouchableOpacity
-                  style={styles.botonCerrar}
+                  style={[styles.botonCerrar, { marginTop: (puedeValidar || puedeValidarBano) ? 12 : 8 }]}
                   onPress={() => setPinSeleccionado(null)}
                 >
                   <Text style={styles.textoBotoncerrar}>Cerrar</Text>
@@ -147,35 +339,50 @@ const styles = StyleSheet.create({
   // ESTILOS DEL MODAL
   modalOverlay: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'flex-end',
   },
   modalBackdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
   },
   modalContent: {
-    width: '80%',
-    maxWidth: 300,
+    width: '100%',
+    backgroundColor: '#ffffff',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    padding: 24,
+    paddingBottom: 36,
+    elevation: 20,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
     zIndex: 1000,
   },
+  barraArrastreModal: {
+    width: 40,
+    height: 5,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 2.5,
+    alignSelf: 'center',
+    marginBottom: 20,
+  },
   calloutBox: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#e0e0e0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
+    backgroundColor: 'transparent',
+  },
+  contenedorTituloModal: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  iconoModal: {
+    marginRight: 12,
   },
   tituloAlertaNativo: {
     fontWeight: 'bold',
-    fontSize: 16,
-    color: '#000000',
-    marginBottom: 8,
+    fontSize: 18,
+    color: '#212529',
+    flex: 1,
   },
   subtituloAlertaNativo: {
     fontSize: 13,
@@ -184,18 +391,17 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   descripcionNativa: {
-    fontSize: 12,
-    color: '#555555',
-    marginTop: 8,
-    marginBottom: 16,
+    fontSize: 13,
+    color: '#495057',
+    marginTop: 6,
+    marginBottom: 18,
     lineHeight: 18,
   },
   botonCerrar: {
-    backgroundColor: COLORS.primary || '#007AFF',
-    borderRadius: 8,
-    paddingVertical: 10,
+    backgroundColor: '#757575',
+    borderRadius: 10,
+    paddingVertical: 12,
     paddingHorizontal: 16,
-    marginTop: 8,
   },
   textoBotoncerrar: {
     color: '#ffffff',
@@ -203,18 +409,81 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  contenedorTituloModal: {
-    flexDirection: 'row',
+
+  // ESTILOS DE LA VALIDACIÓN COLABORATIVA (MODAL)
+  contenedorValidacionModal: {
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
+    paddingTop: 14,
+    marginVertical: 10,
     alignItems: 'center',
-    marginBottom: 6,
   },
-  iconoModal: {
-    marginRight: 10, // Deja un espacio elegante entre el icono y el texto
-  },
-  tituloAlertaNativo: {
+  preguntaModal: {
+    fontSize: 13,
     fontWeight: 'bold',
-    fontSize: 18,
-    color: '#000000',
-    flex: 1, // Permite que el texto se estire de forma fluida
+    color: '#212529',
+    marginBottom: 10,
+  },
+  botonValidarModal: {
+    backgroundColor: '#388E3C',
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    width: '100%',
+  },
+  textoBotonValidar: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+
+  // ⚠️ ESTILOS DE LA TARJETA FLOTANTE PROACTIVA EN PANTALLA PRINCIPAL
+  tarjetaFlotante: {
+    position: 'absolute',
+    bottom: 30,
+    left: 20,
+    right: 20,
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(178, 30, 41, 0.08)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 10,
+    zIndex: 999,
+  },
+  tarjetaFlotanteTitulo: {
+    fontWeight: 'bold',
+    fontSize: 15,
+    color: '#D32F2F',
+    marginBottom: 4,
+  },
+  tarjetaFlotanteDescripcion: {
+    fontSize: 13,
+    color: '#495057',
+    marginBottom: 10,
+    lineHeight: 18,
+  },
+  tarjetaFlotantePregunta: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#212529',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  tarjetaFlotanteBoton: {
+    backgroundColor: '#388E3C',
+    borderRadius: 10,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  tarjetaFlotanteBotonTexto: {
+    color: '#ffffff',
+    fontWeight: 'bold',
+    fontSize: 14,
   },
 });

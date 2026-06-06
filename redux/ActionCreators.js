@@ -179,7 +179,7 @@ export const addNuevaAlertaLocal = (alerta) => ({ type: ActionTypes.ADD_NUEVA_AL
 export const fetchAlertas = () => (dispatch) => {
     dispatch(alertasLoading());
 
-    // 1. Escuchamos el nodo global de la base de datos (raíz) para traer alertas y presencia a la vez
+    // 1. Escuchamos el nodo global de la base de datos (raíz) para traer alertas, presencia y baños a la vez
     const dbRef = ref(rtdb);
 
     // 2. Activamos el escuchador 'onValue'. 
@@ -188,9 +188,11 @@ export const fetchAlertas = () => (dispatch) => {
         const dataJson = snapshot.val() || {};
         const alertasJson = dataJson.alertas || {};
         const presenciaJson = dataJson.presencia || {};
+        const banosJson = dataJson.baños || dataJson.banos || {};
         const arrayAlertasCalculadas = [];
+        const arrayBanosCalculados = [];
 
-        // 2. RECORREMOS CADA ALERTA PARA APLICAR EL ALGORITMO
+        // A. RECORREMOS CADA ALERTA GENERAL PARA APLICAR EL ALGORITMO
         Object.keys(alertasJson).forEach(key => {
             const alerta = alertasJson[key];
             const emisorId = alerta.userId;
@@ -216,6 +218,12 @@ export const fetchAlertas = () => (dispatch) => {
 
             if (minutosVirtuales > 15) {
                 fiabilidadCalculada = 'Obsoleta'; //Eliminación automática
+                
+                // Eliminación física automática de Firebase Realtime Database
+                const alertaRef = ref(rtdb, `alertas/${key}`);
+                set(alertaRef, null).catch(err => 
+                    console.log(`Error al limpiar alerta obsoleta ${key} de Firebase:`, err.message)
+                );
             } else if (minutosVirtuales > 10) {
                 fiabilidadCalculada = 'Baja';
             } else if (minutosVirtuales > 5) {
@@ -232,9 +240,55 @@ export const fetchAlertas = () => (dispatch) => {
             }
         });
 
+        // B. RECORREMOS CADA BAÑO PARA APLICAR EL ALGORITMO A SU INCIDENCIA (SI TIENE)
+        Object.keys(banosJson).forEach(banoId => {
+            const bano = banosJson[banoId];
+            let incidenciaCalculada = null;
 
-        // Despachamos las alertas con la fiabilidad calculada en vivo al Store de Redux
-        dispatch(addAlertas(arrayAlertasCalculadas));
+            if (bano.incidencia) {
+                const emisorId = bano.incidencia.userId;
+                const estadoCreador = presenciaJson[emisorId]?.estado || 'offline';
+                const horaReferenciaAlgoritmo = bano.incidencia.ultimoVotoTimestamp || bano.incidencia.timestamp;
+
+                const tiempoReferencia = new Date(horaReferenciaAlgoritmo);
+                const ahora = new Date();
+                const diferenciaMinutos = (ahora - tiempoReferencia) / (1000 * 60);
+
+                const factorVelocidad = (estadoCreador === 'online') ? 1 : 2;
+                const minutosVirtuales = diferenciaMinutos * factorVelocidad;
+
+                let fiabilidadCalculada = 'Alta';
+
+                if (minutosVirtuales > 15) {
+                    fiabilidadCalculada = 'Obsoleta';
+                    // Limpieza física automática del nodo de incidencia en el baño
+                    const banoIncidenciaRef = ref(rtdb, `baños/${banoId}/incidencia`);
+                    set(banoIncidenciaRef, null).catch(err => 
+                        console.log(`Error al limpiar incidencia obsoleta del baño ${banoId}:`, err.message)
+                    );
+                } else if (minutosVirtuales > 10) {
+                    fiabilidadCalculada = 'Baja';
+                } else if (minutosVirtuales > 5) {
+                    fiabilidadCalculada = 'Media';
+                }
+
+                if (fiabilidadCalculada !== 'Obsoleta') {
+                    incidenciaCalculada = {
+                        ...bano.incidencia,
+                        fiabilidad: fiabilidadCalculada
+                    };
+                }
+            }
+
+            arrayBanosCalculados.push({
+                id: banoId,
+                ...bano,
+                incidencia: incidenciaCalculada
+            });
+        });
+
+        // Despachamos las alertas y baños con la fiabilidad calculada en vivo al Store de Redux
+        dispatch(addAlertas({ alertas: arrayAlertasCalculadas, banos: arrayBanosCalculados }));
     }, (error) => {
         dispatch(alertasFailed(error.message));
     });
@@ -242,16 +296,23 @@ export const fetchAlertas = () => (dispatch) => {
 
 
 // --- THUNK 2: SUBIR UNA NUEVA ALERTA (Desde el formulario de reportar) ---
-// Variant for RTDB: `postAlertaRTDB` accepts latitud/longitud and userId
-export const postAlertaRTDB = (tipo, descripcion, latitud, longitud, userId) => (dispatch) => {
+// Variant for RTDB: `postAlertaRTDB` accepts latitud/longitud, userId and optionally calle
+export const postAlertaRTDB = (tipo, descripcion, latitud, longitud, userId, calle) => (dispatch) => {
     const nuevaAlerta = {
         tipo,
         descripcion,
-        latitud: parseFloat(latitud),
-        longitud: parseFloat(longitud),
         userId, // Guardamos el UID del usuario que ha reportado la incidencia
         timestamp: new Date().toISOString()
     };
+
+    if (latitud !== null && latitud !== undefined && longitud !== null && longitud !== undefined) {
+        nuevaAlerta.latitud = parseFloat(latitud);
+        nuevaAlerta.longitud = parseFloat(longitud);
+    }
+
+    if (calle) {
+        nuevaAlerta.calle = calle;
+    }
 
     // Hacemos un POST al nodo alertas.json usando la URL de vuestra base de datos
     return fetch(`${baseUrlDb}alertas.json`, {
@@ -307,7 +368,7 @@ export const actualizarPresencia = (userId, estado) => (dispatch) => {
         .catch(error => console.log('Error enviando presencia:', error.message));
 
     // Apuntamos al nodo /presencia/userId.json usando un PUT para machacar el estado previo
-    /*return fetch(`${firebaseConfig.databaseURL}presencia/${userId}.json`, {
+    /*return fetch(`${firebaseConfig.dataRL}presencia/${userId}.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(datosPresencia)
@@ -337,4 +398,155 @@ export const validarIncidenciaRTDB = (alertaId) => (dispatch) => {
             throw new Error('No se pudo registrar la validación');
         })
         .catch(error => console.log('Error al validar la incidencia:', error.message));
+};
+
+// THUNK E: SUBIR UNA NUEVA INCIDENCIA DE BAÑO (Almacenado directo bajo el baño correspondiente)
+export const postIncidenciaBanoRTDB = (banoId, descripcion, userId) => (dispatch) => {
+    const nuevaIncidencia = {
+        tipo: 'Baño',
+        descripcion: descripcion,
+        userId: userId,
+        timestamp: new Date().toISOString()
+    };
+
+    return fetch(`${baseUrlDb}baños/${banoId}/incidencia.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevaIncidencia)
+    })
+        .then(response => {
+            if (response.ok) {
+                console.log(`[Incidencia Baño] Incidencia registrada con éxito en baño ${banoId}.`);
+                return response;
+            }
+            throw new Error('No se pudo guardar la incidencia de baño en el servidor');
+        })
+        .then(response => response.json())
+        .catch(error => {
+            console.log('Error al reportar incidencia de baño:', error.message);
+            throw error;
+        });
+};
+
+// THUNK F: VALIDAR INCIDENCIA DE BAÑO ("SIGUE AHÍ")
+export const validarIncidenciaBanoRTDB = (banoId) => (dispatch) => {
+    const horaVoto = new Date().toISOString();
+
+    return fetch(`${baseUrlDb}baños/${banoId}/incidencia.json`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            ultimoVotoTimestamp: horaVoto
+        })
+    })
+        .then(response => {
+            if (response.ok) {
+                console.log(`[Validación Baño] Incidencia en baño ${banoId} relanzada.`);
+                return response;
+            }
+            throw new Error('No se pudo registrar la validación del baño');
+        })
+        .catch(error => console.log('Error al validar la incidencia del baño:', error.message));
+};
+
+
+
+// Asegúrate de usar la URL real de tu base de datos Firebase
+
+
+export const eventosLoading = () => ({ type: ActionTypes.EVENTOS_LOADING });
+export const eventosFailed = (errmess) => ({ type: ActionTypes.EVENTOS_FAILED, payload: errmess });
+export const addEventos = (eventos) => ({ type: ActionTypes.ADD_EVENTOS, payload: eventos });
+
+// 🔥 THUNK PARA DESCARGAR LOS EVENTOS DE SAN FERMÍN EN TIEMPO REAL CON FIABILIDAD 🔥
+export const fetchEventos = () => (dispatch) => {
+    dispatch(eventosLoading());
+
+    const dbRef = ref(rtdb);
+    
+    // Escuchamos el nodo global para tener acceso a eventos y presencia para el cálculo de fiabilidad
+    onValue(dbRef, (snapshot) => {
+        const dataJson = snapshot.val() || {};
+        const eventosJson = dataJson.eventos || {};
+        const presenciaJson = dataJson.presencia || {};
+        const arrayEventos = [];
+        
+        Object.keys(eventosJson).forEach(id => {
+            const evento = eventosJson[id];
+            let incidenciaCalculada = null;
+
+            if (evento.incidencia) {
+                const emisorId = evento.incidencia.userId;
+                const estadoCreador = presenciaJson[emisorId]?.estado || 'offline';
+                const horaReferenciaAlgoritmo = evento.incidencia.ultimoVotoTimestamp || evento.incidencia.timestamp;
+
+                const tiempoReferencia = new Date(horaReferenciaAlgoritmo);
+                const ahora = new Date();
+                const diferenciaMinutos = (ahora - tiempoReferencia) / (1000 * 60);
+
+                const factorVelocidad = (estadoCreador === 'online') ? 1 : 2;
+                const minutosVirtuales = diferenciaMinutos * factorVelocidad;
+
+                let fiabilidadCalculada = 'Alta';
+
+                if (minutosVirtuales > 15) {
+                    fiabilidadCalculada = 'Obsoleta';
+                    // Limpieza automática de la incidencia en el evento
+                    const eventoIncidenciaRef = ref(rtdb, `eventos/${id}/incidencia`);
+                    set(eventoIncidenciaRef, null).catch(err => 
+                        console.log(`Error al limpiar incidencia obsoleta del evento ${id}:`, err.message)
+                    );
+                } else if (minutosVirtuales > 10) {
+                    fiabilidadCalculada = 'Baja';
+                } else if (minutosVirtuales > 5) {
+                    fiabilidadCalculada = 'Media';
+                }
+
+                if (fiabilidadCalculada !== 'Obsoleta') {
+                    incidenciaCalculada = {
+                        ...evento.incidencia,
+                        fiabilidad: fiabilidadCalculada
+                    };
+                }
+            }
+
+            arrayEventos.push({
+                id: id,
+                ...evento,
+                incidencia: incidenciaCalculada
+            });
+        });
+        
+        dispatch(addEventos(arrayEventos));
+    }, (error) => {
+        dispatch(eventosFailed(error.message));
+    });
+};
+
+// THUNK G: SUBIR UNA NUEVA INCIDENCIA DE EVENTO (Almacenado directo bajo el evento correspondiente)
+export const postIncidenciaEventoRTDB = (eventoId, descripcion, userId) => (dispatch) => {
+    const nuevaIncidencia = {
+        tipo: 'Evento',
+        descripcion: descripcion,
+        userId: userId,
+        timestamp: new Date().toISOString()
+    };
+
+    return fetch(`${baseUrlDb}eventos/${eventoId}/incidencia.json`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(nuevaIncidencia)
+    })
+        .then(response => {
+            if (response.ok) {
+                console.log(`[Incidencia Evento] Incidencia registrada con éxito en evento ${eventoId}.`);
+                return response;
+            }
+            throw new Error('No se pudo guardar la incidencia de evento en el servidor');
+        })
+        .then(response => response.json())
+        .catch(error => {
+            console.log('Error al reportar incidencia de evento:', error.message);
+            throw error;
+        });
 };

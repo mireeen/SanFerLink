@@ -16,3 +16,8 @@ export const ALERTAS_LOADING = 'ALERTAS_LOADING';
 export const ALERTAS_FAILED = 'ALERTAS_FAILED';
 export const ADD_ALERTAS = 'ADD_ALERTAS';
 export const ADD_NUEVA_ALERTA_LOCAL = 'ADD_NUEVA_ALERTA_LOCAL';
+
+// Constantes para el control de eventos
+export const EVENTOS_LOADING = 'EVENTOS_LOADING';
+export const EVENTOS_FAILED = 'EVENTOS_FAILED';
+export const ADD_EVENTOS = 'ADD_EVENTOS';
