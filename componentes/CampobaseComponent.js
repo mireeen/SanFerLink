@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
-// 1. Importamos AppState desde react-native para el control de presencia
 import { View, Platform, StyleSheet, AppState } from 'react-native';
+import { Text, Button } from 'react-native-paper';
 import Constants from 'expo-constants';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -8,33 +8,22 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { connect } from 'react-redux';
 
-// --- Importaciones de vuestros componentes/pantallas ---
+import BienvenidaScreen from './BienvenidaScreen'; // Nueva
 import LoginScreen from './LoginScreen';
 import EventosScreen from './EventoScreen';
 import MapaScreen from './MapaScreen';
 import ReporteIncidenciaScreen from './ReporteIncidenciaScreen';
-import PerfilScreen from './PerfilScreen'; // ⬅️ Nueva pantalla de perfil
-import { Text } from 'react-native-paper';
-
-// Importamos el Thunk de presencia para actualizar Firebase
+import PerfilScreen from './PerfilScreen';
 import { actualizarPresencia } from '../redux/ActionCreators';
 import { COLORS } from '../comun/comun';
-
-function VistaTemporal(props) {
-  return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}><Text>{props.texto}</Text></View>
-  );
-}
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 
-// Mapeamos el estado global de Redux
 const mapStateToProps = (state) => ({
   usuario: state.usuario
 });
 
-// Mapeamos la acción para inyectar el Thunk de presencia
 const mapDispatchToProps = (dispatch) => ({
   cambiarPresencia: (userId, estado) => dispatch(actualizarPresencia(userId, estado))
 });
@@ -43,48 +32,31 @@ class Campobase extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      // Estado local para recordar el foco actual del móvil (active/background)
-      appStateActual: AppState.currentState
+      appStateActual: AppState.currentState,
+      // CONTROL CENTRALIZADO: 'bienvenida' | 'login' | 'app'
+      rutaActualAcceso: 'bienvenida'
     };
   }
 
   componentDidMount() {
-    // 2. Iniciamos el escuchador nativo del teléfono
     this.appStateSubscription = AppState.addEventListener('change', this.controlarCambioAppState);
   }
 
   componentWillUnmount() {
-    // 3. Limpieza de memoria obligatoria para evitar fugas en procesos de Expo
-    if (this.appStateSubscription) {
-      this.appStateSubscription.remove();
-    }
-
-    // Si destruyen la app del todo, intentamos marcar offline de emergencia
+    if (this.appStateSubscription) this.appStateSubscription.remove();
     const { estaLogueado, datos } = this.props.usuario;
-    if (estaLogueado && datos?.uid) {
-      this.props.cambiarPresencia(datos.uid, 'offline');
-    }
+    if (estaLogueado && datos?.uid) this.props.cambiarPresencia(datos.uid, 'offline');
   }
 
-  // 4. LÓGICA DE PRESENCIA EN TIEMPO REAL CON HARDWARE
   controlarCambioAppState = (siguienteAppState) => {
     const { estaLogueado, datos } = this.props.usuario;
-
-    // Solo interactuamos con Firebase si hay una sesión activa en Redux
     if (estaLogueado && datos?.uid) {
-
-      // CASO A: El usuario regresa a la app (Background ➡️ Active)
       if (this.state.appStateActual.match(/inactive|background/) && siguienteAppState === 'active') {
         this.props.cambiarPresencia(datos.uid, 'online');
-      }
-
-      // CASO B: El usuario bloquea el móvil o abre otra app (Active ➡️ Background)
-      else if (siguienteAppState === 'background') {
+      } else if (siguienteAppState === 'background') {
         this.props.cambiarPresencia(datos.uid, 'background');
       }
     }
-
-    // Actualizamos el estado de la clase
     this.setState({ appStateActual: siguienteAppState });
   };
 
@@ -92,111 +64,127 @@ class Campobase extends Component {
     const { estaLogueado, datos } = this.props.usuario;
     const prevEstaLogueado = prevProps.usuario.estaLogueado;
 
-    // Cuando el login pasa a true por primera vez, forzamos el estado 'online'
+    // A. Si se loguea de verdad, saltamos directo a la App colaborativa
     if (estaLogueado && !prevEstaLogueado && datos?.uid) {
       this.props.cambiarPresencia(datos.uid, 'online');
+      this.setState({ rutaActualAcceso: 'app' });
+    }
+
+    // B. Si cierra sesión (pasa a false), lo mandamos de vuelta a Bienvenida
+    if (!estaLogueado && prevEstaLogueado) {
+      this.setState({ rutaActualAcceso: 'bienvenida' });
     }
   }
 
-  // --- Navegadores de Pestañas (Stack Navigators) ---
   MapaNavegador = () => (
     <Stack.Navigator screenOptions={styles.opcionesHeader}>
-      <Stack.Screen 
-        name="MapaSanFermin" 
-        component={MapaScreen} 
-        options={{ 
-          title: 'Mapa de Pamplona',
-          headerTitleAlign: 'center'
-        }} 
-      />
+      <Stack.Screen name="MapaSanFermin" component={MapaScreen} options={{ title: 'Mapa Realtime', headerTitleAlign: 'center' }} />
     </Stack.Navigator>
   );
 
   AlertasNavegador = () => (
     <Stack.Navigator screenOptions={styles.opcionesHeader}>
-      <Stack.Screen name="ReportarIncidente" component={ReporteIncidenciaScreen} options={{ headerShown: false }} />
+      <Stack.Screen name="ReportarIncidente" component={ReporteIncidenciaScreen} options={{ title: 'Alertas Comunidad', headerTitleAlign: 'center' }} />
     </Stack.Navigator>
   );
 
   EventosNavegador = () => (
     <Stack.Navigator screenOptions={styles.opcionesHeader}>
-      <Stack.Screen name="Eventos" component={EventosScreen} options={{ headerShown: false }}/>
+      <Stack.Screen name="Eventos" component={EventosScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 
-  // 5. Añadimos el Navegador para la nueva pantalla de Perfil
   PerfilNavegador = () => (
     <Stack.Navigator screenOptions={styles.opcionesHeader}>
-      <Stack.Screen name="MiPerfil" component={PerfilScreen} options={{ title: 'Mi Perfil' }} />
+      <Stack.Screen name="MiPerfil" options={{ title: 'Mi Perfil', headerTitleAlign: 'center' }}>
+        {props => <PerfilScreen {...props} onIrALogin={() => this.setState({ rutaActualAcceso: 'login' })} />}
+      </Stack.Screen>
     </Stack.Navigator>
   );
 
-  // --- Navegador Principal del Menú de Pestañas (Bottom Tab) ---
-  BottomTabNavegador = () => {
-    return (
-      <Tab.Navigator
-        initialRouteName="MapaTab"
-        screenOptions={{
-          headerShown: false,
-          tabBarActiveTintColor: COLORS.primary,
-          tabBarInactiveTintColor: 'gray',
-          tabBarStyle: { backgroundColor: '#ffffff' }
+  BottomTabNavegador = () => (
+    <Tab.Navigator
+      initialRouteName="MapaTab"
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: COLORS.primary,
+        tabBarInactiveTintColor: 'gray',
+        tabBarStyle: { backgroundColor: '#ffffff' }
+      }}
+    >
+      <Tab.Screen
+        name="EventosTab"
+        component={this.EventosNavegador}
+        options={{
+          title: 'Eventos',
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="calendar-text" color={color} size={size} />,
         }}
-      >
-         <Tab.Screen
-          name="EventosTab"
-          component={this.EventosNavegador}
-          options={{
-            title: 'Eventos',
-            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="calendar-text" color={color} size={size} />,
-          }}
-        />
-        <Tab.Screen
-          name="MapaTab"
-          component={this.MapaNavegador}
-          options={{
-            title: 'Mapa',
-            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="map" color={color} size={size} />,
-          }}
-        />
-        <Tab.Screen
-          name="AlertasTab"
-          component={this.AlertasNavegador}
-          options={{
-            title: 'Alertar',
-            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="alert-circle" color={color} size={size} />,
-          }}
-        />
-       
-        {/* 6. Inyectamos la pestaña de perfil en el menú inferior */}
-        <Tab.Screen
-          name="PerfilTab"
-          component={this.PerfilNavegador}
-          options={{
-            title: 'Perfil',
-            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account" color={color} size={size} />,
-          }}
-        />
-      </Tab.Navigator>
-    );
-  };
+      />
+      <Tab.Screen
+        name="MapaTab"
+        component={this.MapaNavegador}
+        options={{
+          title: 'Mapa',
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="map" color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="AlertasTab"
+        component={this.AlertasNavegador}
+        options={{
+          title: 'Alertar',
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="alert-circle" color={color} size={size} />,
+        }}
+      />
+      <Tab.Screen
+        name="PerfilTab"
+        component={this.PerfilNavegador}
+        options={{
+          title: 'Perfil',
+          tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account" color={color} size={size} />,
+        }}
+      />
+    </Tab.Navigator>
+  );
 
   render() {
-    const { estaLogueado } = this.props.usuario;
+    const { rutaActualAcceso } = this.state;
 
-    return (
-      <NavigationContainer>
-        <View style={{ flex: 1, paddingTop: Platform.OS === 'ios' ? 0 : Constants.statusBarHeight }}>
-
-          {estaLogueado ? (
-            <this.BottomTabNavegador />
-          ) : (
+    // RENDERIZADO POR MÁQUINA DE ESTADOS LIMPIA
+    switch (rutaActualAcceso) {
+      case 'bienvenida':
+        return (
+          <BienvenidaScreen
+            onEntrarInvitado={() => this.setState({ rutaActualAcceso: 'app' })} // Saltamos directo a la App en modo lectura
+            onIrALogin={() => this.setState({ rutaActualAcceso: 'login' })}
+          />
+        );
+      case 'login':
+        return (
+          <View style={{ flex: 1, paddingTop: Platform.OS === 'ios' ? 0 : Constants.statusBarHeight }}>
             <LoginScreen />
-          )}
-
-        </View>
-      </NavigationContainer>
-    );
+            <Button
+              mode="text"
+              textColor="gray"
+              onPress={() => this.setState({ rutaActualAcceso: 'bienvenida' })}
+              style={{ backgroundColor: '#ffffff', paddingBottom: 20 }}
+              icon="arrow-left"
+            >
+              Volver Atrás
+            </Button>
+          </View>
+        );
+      case 'app':
+        return (
+          <NavigationContainer>
+            <View style={{ flex: 1, paddingTop: Platform.OS === 'ios' ? 0 : Constants.statusBarHeight }}>
+              <this.BottomTabNavegador />
+            </View>
+          </NavigationContainer>
+        );
+      default:
+        return <WelcomeScreen onEntrarInvitado={() => this.setState({ rutaActualAcceso: 'app' })} />;;
+    }
   }
 }
 
@@ -208,5 +196,4 @@ const styles = StyleSheet.create({
   }
 });
 
-// Conectamos el componente aplicando ambos mapeos (lectura y escritura de presencia)
 export default connect(mapStateToProps, mapDispatchToProps)(Campobase);

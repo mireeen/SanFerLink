@@ -24,9 +24,9 @@ const obtenerNombreCalle = async (latitud, longitud) => {
         // 2. Extraemos el nombre de la calle (en Expo viene en la propiedad 'street')
         if (resultado && resultado.street) {
             // Ejemplo: "Calle de la Estafeta"
-            return resultado.street; 
+            return resultado.street;
         }
-        
+
         return "Calle desconocida";
     } catch (error) {
         console.log("Error al obtener la calle:", error);
@@ -36,7 +36,7 @@ const obtenerNombreCalle = async (latitud, longitud) => {
 
 export default function ReporteIncidenciaScreen() {
     const dispatch = useDispatch();
-    
+
     // 1. SELECTORES DE REDUX
     const { alertas, banos: banosRedux, isLoading } = useSelector((state) => state.alertas);
     const { resultado: listaEventos } = useSelector((state) => state.eventos);
@@ -46,7 +46,7 @@ export default function ReporteIncidenciaScreen() {
     // 2. ESTADOS LOCALES
     const [filtro, setFiltro] = useState('Todos');
     const [modalVisible, setModalVisible] = useState(false);
-    
+
     // Estados del Formulario de Creación
     const [tipo, setTipo] = useState('Calle colapsada');
     const [descripcion, setDescripcion] = useState('');
@@ -83,7 +83,7 @@ export default function ReporteIncidenciaScreen() {
     // 4. COMBINACIÓN Y FILTRADO DE INCIDENCIAS
     const todasLasIncidencias = React.useMemo(() => {
         const list = [...alertas];
-        
+
         // Agregar incidencias de baños
         banosRedux.forEach(bano => {
             if (bano.incidencia) {
@@ -136,7 +136,7 @@ export default function ReporteIncidenciaScreen() {
     // 5. ENVÍO DEL REPORTE
     const gestionarEnvio = async () => {
         if (!tipo) return;
-        
+
         if (tipo === 'Evento' && !eventoSeleccionado) {
             Alert.alert('Faltan datos', 'Por favor, selecciona el evento afectado.');
             return;
@@ -187,7 +187,7 @@ export default function ReporteIncidenciaScreen() {
                 let { status } = await Location.requestForegroundPermissionsAsync();
                 if (status !== 'granted') {
                     Alert.alert(
-                        'Permiso denegado 📍', 
+                        'Permiso denegado 📍',
                         'Necesitamos tu localización para colocar la incidencia en el mapa de San Fermín.'
                     );
                     setEnviando(false);
@@ -211,7 +211,7 @@ export default function ReporteIncidenciaScreen() {
 
             setDescripcion('');
             setModalVisible(false);
-            
+
         } catch (error) {
             console.error("Error al enviar la incidencia: ", error);
             Alert.alert('Error', 'No se pudo enviar el reporte. Revisa tu conexión.');
@@ -270,9 +270,9 @@ export default function ReporteIncidenciaScreen() {
                     left={(props) => (
                         <View style={styles.contenedorAvatarDual}>
                             <View style={[styles.anilloExteriorAvatar, { borderColor: obtenerColorIcono(item.tipo) }]}>
-                                <Avatar.Icon 
-                                    {...props} 
-                                    icon={obtenerIcono(item.tipo)} 
+                                <Avatar.Icon
+                                    {...props}
+                                    icon={obtenerIcono(item.tipo)}
                                     backgroundColor="transparent"
                                     color={obtenerColorIcono(item.tipo)}
                                     size={36}
@@ -283,14 +283,14 @@ export default function ReporteIncidenciaScreen() {
                 />
                 <Card.Content style={styles.contenidoTarjeta}>
                     <Text variant="bodyMedium" style={styles.descripcionTexto}>{item.descripcion}</Text>
-                    
+
                     <View style={styles.contenedorFilaInfo}>
                         <View style={[styles.badgeFiabilidad, { backgroundColor: badgeInfo.bg }]}>
-                            <MaterialCommunityIcons 
-                                name={badgeInfo.icon} 
-                                size={14} 
-                                color={badgeInfo.text} 
-                                style={{ marginRight: 5 }} 
+                            <MaterialCommunityIcons
+                                name={badgeInfo.icon}
+                                size={14}
+                                color={badgeInfo.text}
+                                style={{ marginRight: 5 }}
                             />
                             <Text style={[styles.textoBadge, { color: badgeInfo.text }]}>
                                 Fiabilidad {fiabilidad}
@@ -302,6 +302,27 @@ export default function ReporteIncidenciaScreen() {
         );
     };
 
+
+    const { estaLogueado } = useSelector((state) => state.usuario);
+
+    if (!estaLogueado) {
+        return (
+            <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 30 }]}>
+                <Avatar.Icon size={80} icon="shield-lock-outline" backgroundColor="#FFF0F2" color={COLORS.primary} />
+                <Text variant="titleLarge" style={{ fontWeight: 'bold', marginTop: 20, textAlign: 'center' }}>
+                    Acceso Colaborativo Protegido
+                </Text>
+                <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#6c757d', marginVertical: 15, lineHeight: 20 }}>
+                    Para poder crear incidencias de calles colapsadas, masificaciones en actos o reportar problemas en aseos,
+                    necesitas formar parte de la comunidad registrada de SanFerLink.
+                </Text>
+                {/* Este botón puede llamar opcionalmente a un prop para mover la pestaña, lo manejaremos amigablemente */}
+                <Text style={{ fontStyle: 'italic', color: COLORS.primary, fontWeight: 'bold' }}>
+                    💡 Inicia sesión desde la pestaña de Perfil
+                </Text>
+            </View>
+        );
+    }
     // --- RENDER PRINCIPAL DE LA PANTALLA ---
     return (
         <View style={styles.container}>
@@ -309,7 +330,7 @@ export default function ReporteIncidenciaScreen() {
             <View style={styles.cabeceraPanuelico}>
                 <Text style={styles.tituloHeader}>Incidencias Activas</Text>
                 <Text style={styles.subtituloHeader}>Comunidad colaborativa de San Fermín</Text>
-                
+
                 {/* Chips de Filtrado integrados en la cabecera */}
                 <View style={styles.contenedorChips}>
                     <FlatList
@@ -367,15 +388,15 @@ export default function ReporteIncidenciaScreen() {
             >
                 <View style={styles.modalOverlay}>
                     {/* Fondo oscuro cerrable al pulsar fuera */}
-                    <TouchableOpacity 
-                        style={StyleSheet.absoluteFillObject} 
-                        activeOpacity={1} 
+                    <TouchableOpacity
+                        style={StyleSheet.absoluteFillObject}
+                        activeOpacity={1}
                         onPress={() => setModalVisible(false)}
                     />
                     <View style={styles.modalContent}>
                         {/* Barra de arrastre superior (Bottom Sheet Handle) */}
                         <View style={styles.barraArrastreModal} />
-                        
+
                         <Text style={styles.modalTitulo}>Reportar Incidencia</Text>
 
                         <Text style={styles.label}>¿Qué tipo de incidencia es?</Text>
@@ -410,10 +431,10 @@ export default function ReporteIncidenciaScreen() {
                                         enabled={!enviando}
                                     >
                                         {listaEventos && listaEventos.map((evento) => (
-                                            <Picker.Item 
-                                                key={evento.id} 
-                                                label={evento.name} 
-                                                value={evento.id} 
+                                            <Picker.Item
+                                                key={evento.id}
+                                                label={evento.name}
+                                                value={evento.id}
                                             />
                                         ))}
                                     </Picker>
@@ -432,10 +453,10 @@ export default function ReporteIncidenciaScreen() {
                                         enabled={!enviando}
                                     >
                                         {banosRedux && banosRedux.map((bano) => (
-                                            <Picker.Item 
-                                                key={bano.id} 
-                                                label={bano.name} 
-                                                value={bano.id} 
+                                            <Picker.Item
+                                                key={bano.id}
+                                                label={bano.name}
+                                                value={bano.id}
                                             />
                                         ))}
                                     </Picker>
@@ -450,8 +471,8 @@ export default function ReporteIncidenciaScreen() {
                                 tipo === 'Calle colapsada'
                                     ? "Ej: Aglomeración masiva en Estafeta..."
                                     : tipo === 'Baño'
-                                    ? "Ej: El baño portátil de Plaza del Castillo está roto..."
-                                    : "Ej: Se cambia el concierto de Plaza del Castillo a Plaza de los Fueros..."
+                                        ? "Ej: El baño portátil de Plaza del Castillo está roto..."
+                                        : "Ej: Se cambia el concierto de Plaza del Castillo a Plaza de los Fueros..."
                             }
                             value={descripcion}
                             onChangeText={setDescripcion}
@@ -494,7 +515,7 @@ export default function ReporteIncidenciaScreen() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: COLORS.background },
-    
+
     // Cabecera Estilo Pañuelico
     cabeceraPanuelico: {
         backgroundColor: '#B21E29',
@@ -536,9 +557,9 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(255, 255, 255, 0.15)',
         borderWidth: 0,
     },
-    
+
     listaPad: { padding: 15, paddingBottom: 85 },
-    
+
     // Tarjeta Incidencia Glassmorphic
     tarjetaIncidencia: {
         marginBottom: 16,
@@ -604,7 +625,7 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     textoVacio: { textAlign: 'center', marginTop: 45, color: '#888888', fontStyle: 'italic' },
-    
+
     // BOTÓN FLOTANTE (FAB)
     fab: {
         position: 'absolute',
