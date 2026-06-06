@@ -14,6 +14,7 @@ import EventosScreen from './EventoScreen';
 import MapaScreen from './MapaScreen';
 import ReporteIncidenciaScreen from './ReporteIncidenciaScreen';
 import PerfilScreen from './PerfilScreen'; // ⬅️ Nueva pantalla de perfil
+import CuadrillaScreen from './CuadrillaScreen'; // ⬅️ Nueva pantalla de cuadrilla
 import { Text } from 'react-native-paper';
 
 // Importamos el Thunk de presencia para actualizar Firebase
@@ -131,6 +132,13 @@ class Campobase extends Component {
     </Stack.Navigator>
   );
 
+  // Navegador para la pantalla de Cuadrilla (con cabecera personalizada, sin doble cabecera)
+  CuadrillaNavegador = () => (
+    <Stack.Navigator screenOptions={styles.opcionesHeader}>
+      <Stack.Screen name="MiCuadrilla" component={CuadrillaScreen} options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+
   // --- Navegador Principal del Menú de Pestañas (Bottom Tab) ---
   BottomTabNavegador = () => {
     return (
@@ -165,6 +173,16 @@ class Campobase extends Component {
           options={{
             title: 'Alertar',
             tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="alert-circle" color={color} size={size} />,
+          }}
+        />
+        
+        {/* Nueva pestaña de Cuadrilla para planificar con amigos */}
+        <Tab.Screen
+          name="CuadrillaTab"
+          component={this.CuadrillaNavegador}
+          options={{
+            title: 'Cuadrilla',
+            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account-group" color={color} size={size} />,
           }}
         />
        

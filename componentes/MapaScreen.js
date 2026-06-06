@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator, Text, Modal, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAlertas, validarIncidenciaRTDB, validarIncidenciaBanoRTDB } from '../redux/ActionCreators';
+import { fetchAlertas, validarIncidenciaRTDB, validarIncidenciaBanoRTDB, descartarIncidenciaRTDB, descartarIncidenciaBanoRTDB } from '../redux/ActionCreators';
 import { COLORS } from '../comun/comun';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -28,6 +28,16 @@ export default function MapaScreen() {
   const [pinSeleccionado, setPinSeleccionado] = React.useState(null);
   const [userLocation, setUserLocation] = React.useState(null);
   const [alertasValidadasLocales, setAlertasValidadasLocales] = React.useState([]);
+  const [tracksViewChanges, setTracksViewChanges] = React.useState(true);
+
+  // Optimización de rendimiento para evitar parpadeos y que los marcadores salten al moverse el usuario
+  useEffect(() => {
+    setTracksViewChanges(true);
+    const timer = setTimeout(() => {
+      setTracksViewChanges(false);
+    }, 3000);
+    return () => clearTimeout(timer);
+  }, [alertas, banos, isLoading]);
 
   // Escuchamos el estado global de alertas, baños y del usuario logueado
   const { alertas, banos, isLoading } = useSelector((state) => state.alertas);
@@ -141,31 +151,51 @@ export default function MapaScreen() {
         showsUserLocation={true}
         showsMyLocationButton={true}
       >
-        {/* Renderizado de Baños Públicos (azul si normal, naranja si tiene incidencia activa) */}
-        {banos && banos.map((b) => (
-          <Marker
-            key={`bano-${b.id}`}
-            coordinate={{
-              latitude: b.lat,
-              longitude: b.lng,
-            }}
-            pinColor={b.incidencia ? 'orange' : 'blue'}
-            onPress={() => {
-              setPinSeleccionado(b);
-            }}
-          />
-        ))}
+        {/* Renderizado de Baños Públicos (con marcador premium personalizado) */}
+        {banos && banos.map((b) => {
+          const opacidad = b.incidencia 
+            ? obtenerOpacidadFiabilidad(b.incidencia.fiabilidad) 
+            : 1.0;
 
-        {/* Renderizado de Alertas Colaborativas con Opacidad Dinámica (Excluyendo Eventos) */}
+          return (
+            <Marker
+              key={`bano-${b.id}`}
+              coordinate={{
+                latitude: b.lat,
+                longitude: b.lng,
+              }}
+              opacity={opacidad}
+              tracksViewChanges={tracksViewChanges}
+              anchor={{ x: 0.5, y: 0.5 }}
+              onPress={() => {
+                setPinSeleccionado(b);
+              }}
+            >
+              <View style={[
+                styles.marcadorContenedor,
+                { backgroundColor: b.incidencia ? '#E65100' : '#0288D1' }
+              ]}>
+                <Text style={styles.marcadorEmoji}>🚽</Text>
+              </View>
+            </Marker>
+          );
+        })}
+
+
+        {/* Renderizado de Marcadores de Alertas Colaborativas Personalizados */}
         {alertas.filter(alerta => alerta.tipo !== 'Evento' && alerta.tipo !== 'Evento cancelado' && alerta.tipo !== 'Evento trasladado').map((alerta) => {
-          // Si no tiene coordenadas, no se pinta en el mapa
           if (alerta.latitud === undefined || alerta.latitud === null || alerta.longitud === undefined || alerta.longitud === null) {
             return null;
           }
 
-          const esCalleColapsadaAlerta = alerta.tipo === 'Calle colapsada';
-          const pinColor = esCalleColapsadaAlerta ? 'red' : 'orange';
           const opacidad = obtenerOpacidadFiabilidad(alerta.fiabilidad);
+          
+          let colorMarcador = '#E65100'; // Default naranja
+          if (alerta.tipo === 'Calle colapsada') {
+            colorMarcador = '#D32F2F'; // Rojo
+          } else if (alerta.tipo === 'Policía') {
+            colorMarcador = '#1A237E'; // Azul oscuro
+          }
 
           return (
             <Marker
@@ -174,12 +204,20 @@ export default function MapaScreen() {
                 latitude: alerta.latitud,
                 longitude: alerta.longitud,
               }}
-              pinColor={pinColor}
               opacity={opacidad}
+              tracksViewChanges={tracksViewChanges}
+              anchor={{ x: 0.5, y: 0.5 }}
               onPress={() => {
                 setPinSeleccionado(alerta);
               }}
-            />
+            >
+              <View style={[
+                styles.marcadorContenedor,
+                { backgroundColor: colorMarcador }
+              ]}>
+                <Text style={styles.marcadorEmojiAlert}>⚠️</Text>
+              </View>
+            </Marker>
           );
         })}
       </MapView>
@@ -192,19 +230,35 @@ export default function MapaScreen() {
             {alertaCercana.descripcion || 'Sin descripción adicional'}
           </Text>
           <Text style={styles.tarjetaFlotantePregunta}>¿Sigue la calle colapsada?</Text>
-          <TouchableOpacity
-            style={styles.tarjetaFlotanteBoton}
-            onPress={() => {
-              dispatch(validarIncidenciaRTDB(alertaCercana.id));
-              setAlertasValidadasLocales((prev) => [...prev, alertaCercana.id]);
-              Alert.alert(
-                "¡Incidencia Validada! 👍",
-                "Has confirmado que la calle sigue colapsada y su fiabilidad ha sido restaurada."
-              );
-            }}
-          >
-            <Text style={styles.tarjetaFlotanteBotonTexto}>👍 Sigue ahí</Text>
-          </TouchableOpacity>
+          <View style={styles.tarjetaFlotanteContenedorBotones}>
+            <TouchableOpacity
+              style={[styles.tarjetaFlotanteBoton, { backgroundColor: '#388E3C', flex: 1, marginRight: 8 }]}
+              onPress={() => {
+                dispatch(validarIncidenciaRTDB(alertaCercana.id));
+                setAlertasValidadasLocales((prev) => [...prev, alertaCercana.id]);
+                Alert.alert(
+                  "¡Incidencia Validada! 👍",
+                  "Has confirmado que la calle sigue colapsada."
+                );
+              }}
+            >
+              <Text style={styles.tarjetaFlotanteBotonTexto}>👍 Sí</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tarjetaFlotanteBoton, { backgroundColor: '#D32F2F', flex: 1 }]}
+              onPress={() => {
+                dispatch(descartarIncidenciaRTDB(alertaCercana.id));
+                setAlertasValidadasLocales((prev) => [...prev, alertaCercana.id]);
+                Alert.alert(
+                  "Reporte enviado 👎",
+                  "Has informado de que la calle ya no está colapsada."
+                );
+              }}
+            >
+              <Text style={styles.tarjetaFlotanteBotonTexto}>👎 Ya no</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -227,12 +281,9 @@ export default function MapaScreen() {
               <View style={styles.barraArrastreModal} />
               <View style={styles.calloutBox}>
                 <View style={styles.contenedorTituloModal}>
-                  <MaterialCommunityIcons
-                    name={esBano ? 'toilet' : obtenerIconoIncidencia(pinSeleccionado.tipo)}
-                    size={26}
-                    color={esBano ? (tieneIncidenciaBano ? 'orange' : 'blue') : (COLORS.primary || '#B21E29')}
-                    style={styles.iconoModal}
-                  />
+                  <Text style={styles.emojiModal}>
+                    {esBano ? '🚽' : '⚠️'}
+                  </Text>
 
                   <Text style={styles.tituloAlertaNativo}>
                     {esBano ? `Aseo: ${pinSeleccionado.name}` : (pinSeleccionado.calle || pinSeleccionado.tipo)}
@@ -279,20 +330,37 @@ export default function MapaScreen() {
                 {puedeValidar && (
                   <View style={styles.contenedorValidacionModal}>
                     <Text style={styles.preguntaModal}>¿Sigue la calle colapsada?</Text>
-                    <TouchableOpacity
-                      style={styles.botonValidarModal}
-                      onPress={() => {
-                        dispatch(validarIncidenciaRTDB(pinSeleccionado.id));
-                        setAlertasValidadasLocales((prev) => [...prev, pinSeleccionado.id]);
-                        Alert.alert(
-                          "¡Incidencia Validada! 👍",
-                          "Has confirmado que la calle sigue colapsada y su fiabilidad ha sido restaurada."
-                        );
-                        setPinSeleccionado(null);
-                      }}
-                    >
-                      <Text style={styles.textoBotonClaridad || styles.textoBotonValidar}>👍 Sigue ahí</Text>
-                    </TouchableOpacity>
+                    <View style={styles.contenedorBotonesModal}>
+                      <TouchableOpacity
+                        style={[styles.botonValidarModal, { backgroundColor: '#388E3C', flex: 1, marginRight: 8 }]}
+                        onPress={() => {
+                          dispatch(validarIncidenciaRTDB(pinSeleccionado.id));
+                          setAlertasValidadasLocales((prev) => [...prev, pinSeleccionado.id]);
+                          Alert.alert(
+                            "¡Incidencia Validada! 👍",
+                            "Has confirmado que la calle sigue colapsada."
+                          );
+                          setPinSeleccionado(null);
+                        }}
+                      >
+                        <Text style={styles.textoBotonValidar}>👍 Sí</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.botonValidarModal, { backgroundColor: '#D32F2F', flex: 1 }]}
+                        onPress={() => {
+                          dispatch(descartarIncidenciaRTDB(pinSeleccionado.id));
+                          setAlertasValidadasLocales((prev) => [...prev, pinSeleccionado.id]);
+                          Alert.alert(
+                            "Reporte enviado 👎",
+                            "Has informado de que la calle ya no está colapsada."
+                          );
+                          setPinSeleccionado(null);
+                        }}
+                      >
+                        <Text style={styles.textoBotonValidar}>👎 Ya no</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
 
@@ -300,19 +368,35 @@ export default function MapaScreen() {
                 {puedeValidarBano && (
                   <View style={styles.contenedorValidacionModal}>
                     <Text style={styles.preguntaModal}>¿Sigue habiendo incidencia en el baño?</Text>
-                    <TouchableOpacity
-                      style={styles.botonValidarModal}
-                      onPress={() => {
-                        dispatch(validarIncidenciaBanoRTDB(pinSeleccionado.id));
-                        Alert.alert(
-                          "¡Incidencia Validada! 👍",
-                          "Has confirmado que la incidencia sigue ahí y su fiabilidad ha sido restaurada."
-                        );
-                        setPinSeleccionado(null);
-                      }}
-                    >
-                      <Text style={styles.textoBotonClaridad || styles.textoBotonValidar}>👍 Sigue ahí</Text>
-                    </TouchableOpacity>
+                    <View style={styles.contenedorBotonesModal}>
+                      <TouchableOpacity
+                        style={[styles.botonValidarModal, { backgroundColor: '#388E3C', flex: 1, marginRight: 8 }]}
+                        onPress={() => {
+                          dispatch(validarIncidenciaBanoRTDB(pinSeleccionado.id));
+                          Alert.alert(
+                            "¡Incidencia Validada! 👍",
+                            "Has confirmado que la incidencia sigue activa."
+                          );
+                          setPinSeleccionado(null);
+                        }}
+                      >
+                        <Text style={styles.textoBotonValidar}>👍 Sí</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.botonValidarModal, { backgroundColor: '#D32F2F', flex: 1 }]}
+                        onPress={() => {
+                          dispatch(descartarIncidenciaBanoRTDB(pinSeleccionado.id));
+                          Alert.alert(
+                            "Reporte enviado 👎",
+                            "Has informado de que la incidencia ya no está activa."
+                          );
+                          setPinSeleccionado(null);
+                        }}
+                      >
+                        <Text style={styles.textoBotonValidar}>👎 Ya no</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
                 )}
 
@@ -485,5 +569,44 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontWeight: 'bold',
     fontSize: 14,
+  },
+  marcadorContenedor: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#ffffff',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22,
+    shadowRadius: 3,
+  },
+  marcadorEmoji: {
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  marcadorEmojiAlert: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  emojiModal: {
+    fontSize: 28,
+    marginRight: 12,
+  },
+  tarjetaFlotanteContenedorBotones: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 4,
+  },
+  contenedorBotonesModal: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 4,
   },
 });
