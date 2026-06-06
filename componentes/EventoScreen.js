@@ -1,21 +1,33 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet, FlatList, ActivityIndicator, Image } from 'react-native';
-import { Card, Text, Searchbar, Chip, Avatar } from 'react-native-paper';
+import { View, StyleSheet, FlatList, ActivityIndicator, Image, TouchableOpacity, Alert, Modal } from 'react-native';
+import { Card, Text, Searchbar, Chip, Avatar, TextInput, Button, Divider } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchEventos } from '../redux/ActionCreators';
 import { COLORS } from '../comun/comun';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { ref, onValue, set, get } from 'firebase/database';
+import { rtdb } from '../comun/firebase';
 
 export default function EventosScreen() {
     const dispatch = useDispatch();
 
     // 1. Escuchamos el estado global de Redux
     const { resultado: listaEventos, isLoading, errMess } = useSelector((state) => state.eventos);
+    const { datos: usuarioDatos } = useSelector((state) => state.usuario);
+    const userId = usuarioDatos?.uid;
+    const email = usuarioDatos?.email || 'Usuario';
 
-    // 2. Estados locales para Filtros y Buscador
+    // 2. Estados locales para Filtros, Buscador y Cuadrilla
     const [busqueda, setBusqueda] = useState('');
     const [categoriaSeleccionada, setCategoriaSeleccionada] = useState('Todos');
     const [diaSeleccionado, setDiaSeleccionado] = useState('Todos');
+    const [grupoCode, setGrupoCode] = useState(''); // Código del grupo activo
+    const [grupos, setGrupos] = useState({}); // Mapa de { [code]: nombre }
+    const [grupoSeleccionado, setGrupoSeleccionado] = useState(''); // Grupo destino seleccionado en el modal
+    const [modalCuadrillaVisible, setModalCuadrillaVisible] = useState(false);
+    const [eventoPlanificado, setEventoPlanificado] = useState(null);
+    const [notaPlan, setNotaPlan] = useState('');
+    const [guardandoPlan, setGuardandoPlan] = useState(false);
 
     // Categorías disponibles para los Chips de filtrado
     const categorias = ['Todos', 'Encierro', 'Concierto', 'Tradición', 'Infantil'];
@@ -27,6 +39,26 @@ export default function EventosScreen() {
     useEffect(() => {
         dispatch(fetchEventos());
     }, [dispatch]);
+
+    // Escuchar el código de cuadrilla y listado de grupos del usuario en tiempo real
+    useEffect(() => {
+        if (!userId) return;
+
+        const groupsRef = ref(rtdb, `usuarios/${userId}/grupos`);
+        const unsubscribeGroups = onValue(groupsRef, (snapshot) => {
+            setGrupos(snapshot.val() || {});
+        });
+
+        const activeRef = ref(rtdb, `usuarios/${userId}/grupoActivo`);
+        const unsubscribeActive = onValue(activeRef, (snapshot) => {
+            setGrupoCode(snapshot.val() || '');
+        });
+
+        return () => {
+            unsubscribeGroups();
+            unsubscribeActive();
+        };
+    }, [userId]);
 
     // 4. LÓGICA DE FILTRADO COMBINADO (Buscador + Chips + Día)
     const eventosFiltrados = listaEventos.filter(evento => {
@@ -108,6 +140,65 @@ export default function EventosScreen() {
         return require('../assets/pañuelo.jpg'); // default a pañuelo para las no especificadas
     };
 
+    // Abrir Modal para añadir plan
+    const abrirModalCuadrilla = (evento) => {
+        const listaGrupos = Object.keys(grupos);
+        if (listaGrupos.length === 0) {
+            Alert.alert(
+                "Mi Cuadrilla",
+                "Para añadir este evento a la agenda de tu grupo, primero debes unirte o crear una cuadrilla en la pestaña 'Cuadrilla'."
+            );
+            return;
+        }
+        setEventoPlanificado(evento);
+        setNotaPlan('');
+        // Seleccionamos por defecto el grupo activo actual si es parte de los grupos, si no, el primero
+        setGrupoSeleccionado(grupos[grupoCode] ? grupoCode : listaGrupos[0]);
+        setModalCuadrillaVisible(true);
+    };
+
+    // Guardar el plan en la agenda compartida de la cuadrilla
+    const gestionarGuardarPlan = async () => {
+        if (!eventoPlanificado || !grupoSeleccionado) return;
+        setGuardandoPlan(true);
+
+        try {
+            // Verificar si ya está en la agenda del grupo seleccionado
+            const planRef = ref(rtdb, `cuadrillas/${grupoSeleccionado}/agenda/${eventoPlanificado.id}`);
+            const snap = await get(planRef);
+
+            if (snap.exists()) {
+                Alert.alert("Plan ya añadido", `Este acto ya se encuentra en la agenda de la cuadrilla "${grupos[grupoSeleccionado]}".`);
+                setModalCuadrillaVisible(false);
+                return;
+            }
+
+            // Creamos la actividad
+            const nuevoPlan = {
+                eventoId: eventoPlanificado.id,
+                name: eventoPlanificado.name,
+                date: eventoPlanificado.date,
+                location: eventoPlanificado.location,
+                category: eventoPlanificado.category,
+                nota: notaPlan.trim(),
+                timestamp: new Date().toISOString(),
+                asistentes: {
+                    [userId]: email
+                }
+            };
+
+            await set(planRef, nuevoPlan);
+            Alert.alert("¡Éxito!", `Se ha añadido "${eventoPlanificado.name}" a la agenda de la cuadrilla "${grupos[grupoSeleccionado]}".`);
+            setModalCuadrillaVisible(false);
+            setNotaPlan('');
+        } catch (error) {
+            console.error("Error al añadir plan a la cuadrilla:", error);
+            Alert.alert("Error", "No se pudo añadir el plan a la cuadrilla. Revisa tu conexión.");
+        } finally {
+            setGuardandoPlan(false);
+        }
+    };
+
     // 5. RENDERIZADO DE CADA TARJETA DE EVENTO
     const renderizarTarjetaEvento = ({ item }) => {
         const tieneIncidencia = !!item.incidencia;
@@ -147,10 +238,22 @@ export default function EventosScreen() {
                             </Text>
                         </View>
 
-                        {/* Título del Acto */}
-                        <Text style={[styles.tituloTarjeta, !esActivo && styles.tituloTarjetaInactivo]} numberOfLines={1}>
-                            {item.name}
-                        </Text>
+                        {/* Título del Acto con Botón para Cuadrilla */}
+                        <View style={styles.filaTituloCuadrilla}>
+                            <Text style={[styles.tituloTarjeta, !esActivo && styles.tituloTarjetaInactivo, { flex: 1 }]} numberOfLines={1}>
+                                {item.name}
+                            </Text>
+                            <TouchableOpacity 
+                                onPress={() => abrirModalCuadrilla(item)}
+                                style={styles.botonPlanCuadrilla}
+                            >
+                                <MaterialCommunityIcons 
+                                    name="account-group-outline" 
+                                    size={20} 
+                                    color={grupoCode ? COLORS.primary : '#b0b0b0'} 
+                                />
+                            </TouchableOpacity>
+                        </View>
 
                         {/* Fila Ubicación y Hora */}
                         <View style={styles.filaUbicacionHora}>
@@ -315,7 +418,7 @@ export default function EventosScreen() {
                 />
             </View>
 
-            {/* Lista Principal de Eventos */}
+             {/* Lista Principal de Eventos */}
             <FlatList
                 data={eventosFiltrados}
                 keyExtractor={(item) => item.id}
@@ -325,6 +428,96 @@ export default function EventosScreen() {
                     <Text style={styles.textoVacio}>No hay eventos que coincidan con los filtros aplicados.</Text>
                 }
             />
+
+            {/* Modal para añadir evento a la Cuadrilla */}
+            <Modal
+                visible={modalCuadrillaVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setModalCuadrillaVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <TouchableOpacity 
+                        style={StyleSheet.absoluteFillObject} 
+                        activeOpacity={1} 
+                        onPress={() => setModalCuadrillaVisible(false)}
+                    />
+                    <View style={styles.modalContent}>
+                        <View style={styles.barraArrastreModal} />
+                        <Text style={styles.modalTitulo}>Planificar con Amigos</Text>
+                        
+                        {eventoPlanificado && (
+                            <Text style={styles.modalSubtituloPlan}>
+                                Añadirás "{eventoPlanificado.name}" a la agenda de la cuadrilla seleccionada.
+                            </Text>
+                        )}
+
+                        <Text style={styles.label}>Selecciona la Cuadrilla:</Text>
+                        <View style={styles.contenedorChipsGrupoModal}>
+                            {Object.keys(grupos).map((gCode) => {
+                                const seleccionado = gCode === grupoSeleccionado;
+                                const gNombre = grupos[gCode];
+                                return (
+                                    <Chip
+                                        key={gCode}
+                                        selected={seleccionado}
+                                        onPress={() => setGrupoSeleccionado(gCode)}
+                                        style={[
+                                            styles.chipGrupoModal,
+                                            seleccionado ? styles.chipGrupoModalSeleccionado : styles.chipGrupoModalInactivo
+                                        ]}
+                                        textStyle={{
+                                            color: seleccionado ? '#ffffff' : '#495057',
+                                            fontSize: 11,
+                                            fontWeight: 'bold'
+                                        }}
+                                        showSelectedOverlay={false}
+                                    >
+                                        {gNombre}
+                                    </Chip>
+                                );
+                            })}
+                        </View>
+
+                        <Text style={styles.label}>Nota compartida (opcional):</Text>
+                        <TextInput
+                            mode="outlined"
+                            placeholder="Ej: Quedamos 30 minutos antes en la entrada principal..."
+                            value={notaPlan}
+                            onChangeText={setNotaPlan}
+                            multiline
+                            numberOfLines={2}
+                            disabled={guardandoPlan}
+                            style={styles.input}
+                            outlineColor="#ccc"
+                            activeOutlineColor={COLORS.primary}
+                        />
+
+                        <View style={styles.modalAcciones}>
+                            <Button
+                                mode="outlined"
+                                onPress={() => setModalCuadrillaVisible(false)}
+                                disabled={guardandoPlan}
+                                style={[styles.botonModal, styles.botonCancelar]}
+                                textColor="#666666"
+                            >
+                                Cancelar
+                            </Button>
+
+                            <Button
+                                mode="contained"
+                                onPress={gestionarGuardarPlan}
+                                loading={guardandoPlan}
+                                disabled={guardandoPlan}
+                                style={[styles.botonModal, styles.botonEnviar]}
+                                buttonColor={COLORS.primary}
+                            >
+                                Añadir
+                            </Button>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
@@ -535,5 +728,102 @@ const styles = StyleSheet.create({
         fontSize: 9,
         marginTop: 2,
         textAlign: 'right',
+    },
+    // Nuevos estilos para planificación de cuadrilla
+    filaTituloCuadrilla: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: 2,
+    },
+    botonPlanCuadrilla: {
+        padding: 4,
+        marginLeft: 6,
+    },
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.4)',
+        justifyContent: 'flex-end',
+    },
+    modalContent: {
+        width: '100%',
+        backgroundColor: '#ffffff',
+        borderTopLeftRadius: 24,
+        borderTopRightRadius: 24,
+        padding: 24,
+        paddingBottom: 36,
+        elevation: 20,
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: -4 },
+        shadowOpacity: 0.12,
+        shadowRadius: 16,
+    },
+    barraArrastreModal: {
+        width: 40,
+        height: 5,
+        backgroundColor: '#e0e0e0',
+        borderRadius: 2.5,
+        alignSelf: 'center',
+        marginBottom: 20,
+    },
+    modalTitulo: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#212529',
+        marginBottom: 8,
+        textAlign: 'center',
+    },
+    modalSubtituloPlan: {
+        fontSize: 13,
+        color: '#6c757d',
+        textAlign: 'center',
+        marginBottom: 18,
+        paddingHorizontal: 10,
+        lineHeight: 18,
+    },
+    label: {
+        fontSize: 13,
+        fontWeight: '700',
+        color: '#495057',
+        marginTop: 10,
+        marginBottom: 6,
+    },
+    input: {
+        marginBottom: 18,
+        backgroundColor: '#ffffff',
+    },
+    modalAcciones: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginTop: 10,
+    },
+    botonModal: {
+        flex: 1,
+        marginHorizontal: 5,
+        borderRadius: 10,
+    },
+    botonCancelar: {
+        borderColor: '#e0e0e0',
+    },
+    botonEnviar: {
+        elevation: 2,
+    },
+    contenedorChipsGrupoModal: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginVertical: 6,
+    },
+    chipGrupoModal: {
+        marginRight: 6,
+        marginBottom: 6,
+        height: 30,
+        borderRadius: 15,
+        justifyContent: 'center',
+    },
+    chipGrupoModalSeleccionado: {
+        backgroundColor: '#B21E29',
+    },
+    chipGrupoModalInactivo: {
+        backgroundColor: '#f1f3f5',
     },
 });

@@ -13,7 +13,10 @@ import LoginScreen from './LoginScreen';
 import EventosScreen from './EventoScreen';
 import MapaScreen from './MapaScreen';
 import ReporteIncidenciaScreen from './ReporteIncidenciaScreen';
-import PerfilScreen from './PerfilScreen';
+import PerfilScreen from './PerfilScreen'; // ⬅️ Nueva pantalla de perfil
+import CuadrillaScreen from './CuadrillaScreen'; // ⬅️ Nueva pantalla de cuadrilla
+
+
 import { actualizarPresencia } from '../redux/ActionCreators';
 import { COLORS } from '../comun/comun';
 
@@ -102,6 +105,20 @@ class Campobase extends Component {
     </Stack.Navigator>
   );
 
+  // Navegador para la pantalla de Cuadrilla (con cabecera personalizada, sin doble cabecera)
+  CuadrillaNavegador = () => (
+    <Stack.Navigator screenOptions={styles.opcionesHeader}>
+      <Stack.Screen name="MiCuadrilla" component={CuadrillaScreen} options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+
+  // Navegador para la pantalla de Cuadrilla (con cabecera personalizada, sin doble cabecera)
+  CuadrillaNavegador = () => (
+    <Stack.Navigator screenOptions={styles.opcionesHeader}>
+      <Stack.Screen name="MiCuadrilla" component={CuadrillaScreen} options={{ headerShown: false }} />
+    </Stack.Navigator>
+  );
+
   BottomTabNavegador = () => (
     <Tab.Navigator
       initialRouteName="MapaTab"
@@ -136,6 +153,16 @@ class Campobase extends Component {
           tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="alert-circle" color={color} size={size} />,
         }}
       />
+        
+        {/* Nueva pestaña de Cuadrilla para planificar con amigos */}
+        <Tab.Screen
+          name="CuadrillaTab"
+          component={this.CuadrillaNavegador}
+          options={{
+            title: 'Cuadrilla',
+            tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account-group" color={color} size={size} />,
+          }}
+        />
       <Tab.Screen
         name="PerfilTab"
         component={this.PerfilNavegador}

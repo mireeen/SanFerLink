@@ -550,3 +550,33 @@ export const postIncidenciaEventoRTDB = (eventoId, descripcion, userId) => (disp
             throw error;
         });
 };
+
+// THUNK H: DESCARTAR INCIDENCIA ("YA NO SIGUE AHÍ" / ELIMINACIÓN)
+export const descartarIncidenciaRTDB = (alertaId) => (dispatch) => {
+    return fetch(`${baseUrlDb}alertas/${alertaId}.json`, {
+        method: 'DELETE'
+    })
+        .then(response => {
+            if (response.ok) {
+                console.log(`[Descarte] Alerta ${alertaId} eliminada.`);
+                return response;
+            }
+            throw new Error('No se pudo descartar la incidencia');
+        })
+        .catch(error => console.log('Error al descartar la incidencia:', error.message));
+};
+
+// THUNK I: DESCARTAR INCIDENCIA DE BAÑO ("YA NO SIGUE AHÍ" / ELIMINACIÓN)
+export const descartarIncidenciaBanoRTDB = (banoId) => (dispatch) => {
+    return fetch(`${baseUrlDb}baños/${banoId}/incidencia.json`, {
+        method: 'DELETE'
+    })
+        .then(response => {
+            if (response.ok) {
+                console.log(`[Descarte Baño] Incidencia en baño ${banoId} eliminada.`);
+                return response;
+            }
+            throw new Error('No se pudo descartar la incidencia del baño');
+        })
+        .catch(error => console.log('Error al descartar la incidencia del baño:', error.message));
+};
