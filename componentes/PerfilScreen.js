@@ -140,7 +140,6 @@ export default function PerfilScreen({ onIrALogin }) {
                 </View>
               </TouchableOpacity>
               <Text variant="headlineSmall" style={styles.emailText}>{datos?.email || 'Usuario'}</Text>
-              <Text variant="bodyMedium" style={styles.subtext}>ID Único: {datos?.uid || 'Sin UID'}</Text>
             </Card.Content>
           </Card>
 

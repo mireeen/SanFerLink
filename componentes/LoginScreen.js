@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, ActivityIndicator, Platform, ImageBackground, KeyboardAvoidingView, ScrollView } from 'react-native';
-import { TextInput, Button, Text, HelperText, IconButton, Card } from 'react-native-paper';
+import { TextInput, Button, Text, HelperText, IconButton, Card, useTheme } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import { COLORS } from '../comun/comun';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -9,6 +9,20 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { postLoginFirebase, postRegistroFirebase } from '../redux/ActionCreators';
 
 export default function LoginScreen({ onVolver }) {
+  const paperTheme = useTheme();
+
+  // Custom theme to ensure the floating label cutout is solid white and legible
+  const inputTheme = {
+    ...paperTheme,
+    colors: {
+      ...paperTheme.colors,
+      background: '#ffffff',
+      surface: '#ffffff',
+      surfaceVariant: '#ffffff',
+      primary: '#B21E29',
+    }
+  };
+
   // Estados locales para los inputs y el modo de pantalla
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
@@ -75,13 +89,13 @@ export default function LoginScreen({ onVolver }) {
                 
                 <Text variant="bodyMedium" style={styles.subtitulo}>
                   {esPantallaDeRegistro 
-                    ? 'Únete a la comunidad de SanFerLink y planifica con tu cuadrilla.' 
-                    : 'Accede para gestionar tus cuadrillas y reportar incidencias.'}
+                    ? 'Únete a la comunidad de SanFerLink y planifica con tus amigos.' 
+                    : 'Accede para gestionar tus grupos de amigos y reportar incidencias.'}
                 </Text>
 
                 {/* Campos del Formulario */}
                 <TextInput
-                  label="Correo electrónico"
+                  placeholder="Correo electrónico"
                   value={correo}
                   onChangeText={setCorreo}
                   mode="outlined"
@@ -92,12 +106,12 @@ export default function LoginScreen({ onVolver }) {
                   activeOutlineColor="#B21E29"
                   outlineColor="#ced4da"
                   textColor="#212529"
-                  theme={{ colors: { background: '#ffffff' } }}
+                  theme={inputTheme}
                   left={<TextInput.Icon icon="email-outline" color="#6c757d" />}
                 />
 
                 <TextInput
-                  label="Contraseña"
+                  placeholder="Contraseña"
                   value={contrasena}
                   onChangeText={setContrasena}
                   mode="outlined"
@@ -107,7 +121,7 @@ export default function LoginScreen({ onVolver }) {
                   activeOutlineColor="#B21E29"
                   outlineColor="#ced4da"
                   textColor="#212529"
-                  theme={{ colors: { background: '#ffffff' } }}
+                  theme={inputTheme}
                   left={<TextInput.Icon icon="lock-outline" color="#6c757d" />}
                   right={
                     <TextInput.Icon 
@@ -250,6 +264,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 16,
     fontSize: 14.5,
+    backgroundColor: '#ffffff',
   },
   errorText: {
     color: '#ff8a80', // Rojo claro para que sea perfectamente visible sobre fondo oscuro

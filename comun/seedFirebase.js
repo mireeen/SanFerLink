@@ -379,24 +379,54 @@ const alertas = {
   }
 };
 
+
+const zonasInteres = {
+  plaza_fueros: {
+    nombre: "Plaza de los Fueros",
+    lat: 42.80958563467546, 
+    lng: -1.6445088242341064
+  },
+
+
+  herri_sanferminak: {
+    nombre: "Herri Sanferminak (Plaza de la O)",
+    lat: 42.81815359679303,
+    lng:-1.6497527367179712
+  },
+
+  plaza_castillo: {
+    nombre: "Plaza del Castillo",
+    lat: 42.81702,
+    lng: -1.64296
+  },
+
+  plaza_ayuntamiento: {
+    nombre: "Plaza Consistorial (Ayuntamiento)",
+    lat: 42.81833630968007,
+    lng: -1.644036870023117
+  }
+
+   
+};
+
 async function seed() {
   try {
-    // console.log("📦 Subiendo eventos...");
-    //await set(ref(rtdb, "eventos"), eventos);
+    console.log("📦 Subiendo eventos...");
+    await set(ref(rtdb, "zonasInteres"), zonasInteres);
 
     //console.log("🚽 Subiendo baños...");
     //await set(ref(rtdb, "baños"), baños);
 
-    console.log("🚨 Subiendo alertas...");
-    const alertasRef = ref(rtdb, "alertas");
+    // console.log("🚨 Subiendo alertas...");
+    // const alertasRef = ref(rtdb, "alertas");
 
-    // Primero intenta leer si existe
-    const snapshot = await get(alertasRef);
-    console.log("¿Existe alertas?", snapshot.exists());
+    // // Primero intenta leer si existe
+    // const snapshot = await get(alertasRef);
+    // console.log("¿Existe alertas?", snapshot.exists());
 
     // Luego sube los datos (si no existe, Firebase lo crea)
-    await set(alertasRef, alertas);
-    console.log("✅ Alertas subidas correctamente");
+    // await set(alertasRef, alertas);
+    // console.log("✅ Alertas subidas correctamente");
 
     console.log("✅ Seed completado correctamente");
   } catch (err) {

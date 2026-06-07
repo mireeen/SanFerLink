@@ -157,7 +157,7 @@ export default function CuadrillaScreen() {
     // 7. ACCIÓN: CREAR CUADRILLA
     const gestionarCrearCuadrilla = async () => {
         if (nombreNuevaCuadrilla.trim() === '') {
-            Alert.alert("Faltan datos", "Por favor, introduce el nombre de la cuadrilla.");
+            Alert.alert("Faltan datos", "Por favor, introduce el nombre del grupo.");
             return;
         }
 
@@ -195,12 +195,12 @@ export default function CuadrillaScreen() {
             await set(ref(rtdb, `usuarios/${userId}/grupoActivo`), codigo);
             await set(ref(rtdb, `usuarios/${userId}/email`), email);
 
-            Alert.alert("¡Cuadrilla creada!", `Se ha creado tu grupo con el código: ${codigo}. Compártelo con tus amigos.`);
+            Alert.alert("¡Grupo de amigos creado!", `Se ha creado tu grupo con el código: ${codigo}. Compártelo con tus amigos.`);
             setNombreNuevaCuadrilla('');
             setModalNuevoGrupoVisible(false);
         } catch (error) {
             console.error("Error creando cuadrilla:", error);
-            Alert.alert("Error", "No se pudo crear la cuadrilla. Revisa tu conexión.");
+            Alert.alert("Error", "No se pudo crear el grupo de amigos. Revisa tu conexión.");
         } finally {
             setCreandoGrupo(false);
         }
@@ -228,15 +228,15 @@ export default function CuadrillaScreen() {
                 await set(ref(rtdb, `usuarios/${userId}/grupoActivo`), codigoLimpio);
                 await set(ref(rtdb, `usuarios/${userId}/email`), email);
 
-                Alert.alert("¡Bienvenido!", `Te has unido a la cuadrilla: ${groupData.nombre}`);
+                Alert.alert("¡Bienvenido!", `Te has unido al grupo de amigos: ${groupData.nombre}`);
                 setCodigoEntrada('');
                 setModalNuevoGrupoVisible(false);
             } else {
-                Alert.alert("No encontrada", "No existe ninguna cuadrilla con el código introducido.");
+                Alert.alert("No encontrada", "No existe ningún grupo con el código introducido.");
             }
         } catch (error) {
             console.error("Error al unirse a cuadrilla:", error);
-            Alert.alert("Error", "No se pudo unir a la cuadrilla. Revisa tu conexión.");
+            Alert.alert("Error", "No se pudo unir al grupo. Revisa tu conexión.");
         } finally {
             setUniendoGrupo(false);
         }
@@ -246,8 +246,8 @@ export default function CuadrillaScreen() {
     const gestionarAbandonarCuadrilla = () => {
         if (!grupoCode) return;
         Alert.alert(
-            "Abandonar Cuadrilla",
-            `¿Estás seguro de que quieres salir del grupo "${cuadrillaInfo?.nombre}"? Ya no podrás ver la agenda compartida.`,
+            "Salir del Grupo",
+            `¿Estás seguro de que quieres salir del grupo de amigos "${cuadrillaInfo?.nombre}"? Ya no podrás ver la agenda compartida.`,
             [
                 { text: "Cancelar", style: "cancel" },
                 {
@@ -263,6 +263,19 @@ export default function CuadrillaScreen() {
 
                             // 2. Eliminar el usuario de los miembros del grupo
                             await set(ref(rtdb, `cuadrillas/${grupoAbandonado}/miembros/${userId}`), null);
+
+                            // 2b. Eliminar el usuario de la lista de asistentes de todos los planes de la agenda de este grupo
+                            const agendaRef = ref(rtdb, `cuadrillas/${grupoAbandonado}/agenda`);
+                            const agendaSnap = await get(agendaRef);
+                            if (agendaSnap.exists()) {
+                                const agendaData = agendaSnap.val() || {};
+                                for (const planId of Object.keys(agendaData)) {
+                                    const plan = agendaData[planId];
+                                    if (plan.asistentes && plan.asistentes[userId]) {
+                                        await set(ref(rtdb, `cuadrillas/${grupoAbandonado}/agenda/${planId}/asistentes/${userId}`), null);
+                                    }
+                                }
+                            }
 
                             // 3. Seleccionar otra cuadrilla como activa si existe
                             const snapGrupos = await get(ref(rtdb, `usuarios/${userId}/grupos`));
@@ -331,7 +344,7 @@ export default function CuadrillaScreen() {
     const gestionarEliminarPlan = (planId, planNombre) => {
         Alert.alert(
             "Eliminar Plan",
-            `¿Quieres quitar "${planNombre}" de la agenda de la cuadrilla?`,
+            `¿Quieres quitar "${planNombre}" de la agenda del grupo de amigos?`,
             [
                 { text: "Cancelar", style: "cancel" },
                 {
@@ -450,7 +463,7 @@ export default function CuadrillaScreen() {
         return (
             <View style={styles.centrado}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
-                <Text style={{ marginTop: 10 }}>Cargando cuadrilla...</Text>
+                <Text style={{ marginTop: 10 }}>Cargando planes...</Text>
             </View>
         );
     }
@@ -460,10 +473,10 @@ export default function CuadrillaScreen() {
             <View style={[styles.centrado, { padding: 30 }]}>
                 <Avatar.Icon size={80} icon="account-group" backgroundColor="#FFF0F2" color={COLORS.primary} />
                 <Text variant="titleLarge" style={{ fontWeight: 'bold', marginTop: 20, textAlign: 'center', color: '#212529' }}>
-                    Planificación de Cuadrillas
+                    Planes con Amigos
                 </Text>
                 <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#6c757d', marginVertical: 15, lineHeight: 20 }}>
-                    Para poder crear una cuadrilla de amigos, unirte a un grupo existente mediante un código único y planificar vuestra agenda compartida de San Fermín, necesitas iniciar sesión.
+                    Para poder crear un grupo de amigos, unirte a un grupo existente mediante un código único y planificar vuestra agenda compartida de San Fermín, necesitas iniciar sesión.
                 </Text>
                 <Text style={{ fontStyle: 'italic', color: COLORS.primary, fontWeight: 'bold', textAlign: 'center' }}>
                     💡 Inicia sesión desde la pestaña de Perfil
@@ -476,7 +489,7 @@ export default function CuadrillaScreen() {
         <View style={styles.container}>
             {/* Cabecera Estilo Pañuelico Curvo */}
             <View style={styles.cabeceraPanuelico}>
-                <Text style={styles.tituloHeader}>Mi Cuadrilla</Text>
+                <Text style={styles.tituloHeader}>Mis Amigos</Text>
                 <Text style={styles.subtituloHeader}>Organiza planes de San Fermín con amigos</Text>
             </View>
 
@@ -491,6 +504,7 @@ export default function CuadrillaScreen() {
                                 <TouchableOpacity
                                     key={gCode}
                                     onPress={async () => {
+                                        if (gCode === grupoCode) return; // Si ya es la cuadrilla activa, no hacer nada
                                         setLoading(true);
                                         try {
                                             await set(ref(rtdb, `usuarios/${userId}/grupoActivo`), gCode);
@@ -649,7 +663,7 @@ export default function CuadrillaScreen() {
                         ListEmptyComponent={
                             <View style={styles.contenedorVacio}>
                                 <MaterialCommunityIcons name="calendar-blank-multiple" size={48} color="#bbb" />
-                                <Text style={styles.textoVacio}>Tu cuadrilla aún no tiene planes.</Text>
+                                <Text style={styles.textoVacio}>Tu grupo de amigos aún no tiene planes.</Text>
                                 <Text style={styles.subTextoVacio}>
                                     Ve a la pestaña de "Eventos" y pulsa en el icono de grupo de cualquier acto para añadirlo a la agenda.
                                 </Text>
@@ -664,21 +678,21 @@ export default function CuadrillaScreen() {
                         <Avatar.Icon icon="account-group" size={72} backgroundColor={COLORS.primary} color="#ffffff" style={styles.logoSetup} />
                         <Text style={styles.setupTitulo}>¿Listo para planificar con amigos?</Text>
                         <Text style={styles.setupSubtitulo}>
-                            Crea un grupo único para tu cuadrilla o únete a uno que ya haya sido creado por tus amigos.
+                            Crea un grupo único para tus amigos o únete a uno que ya haya sido creado por ellos.
                         </Text>
                     </View>
 
                     {/* Formulario Crear Cuadrilla */}
                     <Card style={styles.setupCard}>
                         <Card.Content>
-                            <Text style={styles.setupCardTitulo}>Crear Nueva Cuadrilla</Text>
+                            <Text style={styles.setupCardTitulo}>Crear Nuevo Grupo de Amigos</Text>
                             <Text style={styles.setupCardInfo}>
                                 Genera un código de acceso único que podrás compartir con tus amigos para unirse.
                             </Text>
                             <TextInput
                                 mode="outlined"
-                                label="Nombre de tu cuadrilla"
-                                placeholder="Ej: Los Pamplonicas, Cuadrilla San Fermín..."
+                                label="Nombre del grupo"
+                                placeholder="Ej: Los Pamplonicas, Peña San Fermín..."
                                 value={nombreNuevaCuadrilla}
                                 onChangeText={setNombreNuevaCuadrilla}
                                 disabled={creandoGrupo || uniendoGrupo}
@@ -695,7 +709,7 @@ export default function CuadrillaScreen() {
                                 icon="account-multiple-plus"
                                 style={styles.setupBoton}
                             >
-                                Crear Cuadrilla
+                                Crear Grupo
                             </Button>
                         </Card.Content>
                     </Card>
@@ -703,9 +717,9 @@ export default function CuadrillaScreen() {
                     {/* Formulario Unirse a Cuadrilla */}
                     <Card style={styles.setupCard}>
                         <Card.Content>
-                            <Text style={styles.setupCardTitulo}>Unirse a una Cuadrilla</Text>
+                            <Text style={styles.setupCardTitulo}>Unirse a un Grupo</Text>
                             <Text style={styles.setupCardInfo}>
-                                Introduce el código único de 6 caracteres compartido por un amigo de tu cuadrilla.
+                                Introduce el código único de 6 caracteres compartido por un amigo de tu grupo.
                             </Text>
                             <TextInput
                                 mode="outlined"
@@ -751,15 +765,15 @@ export default function CuadrillaScreen() {
                     />
                     <View style={styles.modalContent}>
                         <View style={styles.barraArrastreModal} />
-                        <Text style={styles.modalTitulo}>Añadir Nueva Cuadrilla</Text>
+                        <Text style={styles.modalTitulo}>Añadir Nuevo Grupo</Text>
 
                         <ScrollView style={{ maxHeight: 380 }} showsVerticalScrollIndicator={false}>
                             {/* Formulario Crear */}
-                            <Text style={[styles.setupCardTitulo, { marginTop: 10 }]}>Crear Nueva Cuadrilla</Text>
+                            <Text style={[styles.setupCardTitulo, { marginTop: 10 }]}>Crear Nuevo Grupo</Text>
                             <TextInput
                                 mode="outlined"
-                                label="Nombre de tu cuadrilla"
-                                placeholder="Ej: Los Pamplonicas, Cuadrilla..."
+                                label="Nombre del grupo"
+                                placeholder="Ej: Los Pamplonicas, Peña..."
                                 value={nombreNuevaCuadrilla}
                                 onChangeText={setNombreNuevaCuadrilla}
                                 disabled={creandoGrupo || uniendoGrupo}
@@ -776,13 +790,13 @@ export default function CuadrillaScreen() {
                                 icon="account-multiple-plus"
                                 style={[styles.setupBoton, { marginBottom: 15 }]}
                             >
-                                Crear Cuadrilla
+                                Crear Grupo
                             </Button>
 
                             <Divider style={{ marginVertical: 12, backgroundColor: '#e0e0e0' }} />
 
                             {/* Formulario Unirse */}
-                            <Text style={styles.setupCardTitulo}>Unirse a una Cuadrilla</Text>
+                            <Text style={styles.setupCardTitulo}>Unirse a un Grupo</Text>
                             <TextInput
                                 mode="outlined"
                                 label="Código único"

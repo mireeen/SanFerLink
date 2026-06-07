@@ -151,8 +151,8 @@ export default function EventosScreen() {
         const listaGrupos = Object.keys(grupos);
         if (listaGrupos.length === 0) {
             Alert.alert(
-                "Mi Cuadrilla",
-                "Para añadir este evento a la agenda de tu grupo, primero debes unirte o crear una cuadrilla en la pestaña 'Cuadrilla'."
+                "Planes con Amigos",
+                "Para añadir este evento a la agenda de tu grupo, primero debes unirte o crear un grupo en la pestaña 'Amigos'."
             );
             return;
         }
@@ -174,7 +174,7 @@ export default function EventosScreen() {
             const snap = await get(planRef);
 
             if (snap.exists()) {
-                Alert.alert("Plan ya añadido", `Este acto ya se encuentra en la agenda de la cuadrilla "${grupos[grupoSeleccionado]}".`);
+                Alert.alert("Plan ya añadido", `Este acto ya se encuentra en la agenda del grupo "${grupos[grupoSeleccionado]}".`);
                 setModalCuadrillaVisible(false);
                 return;
             }
@@ -194,7 +194,7 @@ export default function EventosScreen() {
             };
 
             await set(planRef, nuevoPlan);
-            Alert.alert("¡Éxito!", `Se ha añadido "${eventoPlanificado.name}" a la agenda de la cuadrilla "${grupos[grupoSeleccionado]}".`);
+            Alert.alert("¡Éxito!", `Se ha añadido "${eventoPlanificado.name}" a la agenda del grupo "${grupos[grupoSeleccionado]}".`);
             setModalCuadrillaVisible(false);
             setNotaPlan('');
         } catch (error) {
@@ -471,11 +471,11 @@ export default function EventosScreen() {
                         
                         {eventoPlanificado && (
                             <Text style={styles.modalSubtituloPlan}>
-                                Añadirás "{eventoPlanificado.name}" a la agenda de la cuadrilla seleccionada.
+                                Añadirás "{eventoPlanificado.name}" a la agenda del grupo de amigos seleccionado.
                             </Text>
                         )}
 
-                        <Text style={styles.label}>Selecciona la Cuadrilla:</Text>
+                        <Text style={styles.label}>Selecciona el Grupo de Amigos:</Text>
                         <View style={styles.contenedorChipsGrupoModal}>
                             {Object.keys(grupos).map((gCode) => {
                                 const seleccionado = gCode === grupoSeleccionado;
