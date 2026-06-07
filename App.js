@@ -2,6 +2,7 @@ import React from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider } from 'react-redux';
 import { ConfigureStore } from './redux/configureStore';
+//import './comun/seedFirebase'; // Importar para ejecutar seed()
 
 import Campobase from './componentes/CampobaseComponent';
 
