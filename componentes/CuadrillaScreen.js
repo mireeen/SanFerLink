@@ -9,7 +9,7 @@ import { COLORS } from '../comun/comun';
 
 export default function CuadrillaScreen() {
     // 1. SELECTORES DE REDUX
-    const { datos: usuarioDatos } = useSelector((state) => state.usuario);
+    const { datos: usuarioDatos, estaLogueado } = useSelector((state) => state.usuario);
     const userId = usuarioDatos?.uid || 'anonimo';
     const email = usuarioDatos?.email || 'Usuario';
 
@@ -355,8 +355,24 @@ export default function CuadrillaScreen() {
         const listaAsistentes = Object.values(asistentes);
         const asiste = !!asistentes[userId];
         const imagenPlan = obtenerImagenTarjeta(item.category || '', item.name || '');
-        const horaFormateada = new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const fechaFormateada = new Date(item.date).toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+        let horaFormateada = '';
+        let fechaFormateada = '';
+        if (item.date) {
+            const partes = item.date.split('T');
+            if (partes.length === 2) {
+                const fechaPartes = partes[0].split('-');
+                const horaPartes = partes[1].split(':');
+                if (fechaPartes.length === 3 && horaPartes.length >= 2) {
+                    fechaFormateada = `${fechaPartes[2]}/${fechaPartes[1]}`;
+                    horaFormateada = `${horaPartes[0]}:${horaPartes[1]}`;
+                }
+            }
+        }
+        if (!fechaFormateada || !horaFormateada) {
+            const fechaObj = new Date(item.date);
+            horaFormateada = isNaN(fechaObj.getTime()) ? '' : fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            fechaFormateada = isNaN(fechaObj.getTime()) ? '' : fechaObj.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+        }
 
         return (
             <Card style={styles.tarjetaPlan}>
@@ -435,6 +451,23 @@ export default function CuadrillaScreen() {
             <View style={styles.centrado}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
                 <Text style={{ marginTop: 10 }}>Cargando cuadrilla...</Text>
+            </View>
+        );
+    }
+
+    if (!estaLogueado || userId === 'anonimo') {
+        return (
+            <View style={[styles.centrado, { padding: 30 }]}>
+                <Avatar.Icon size={80} icon="account-group" backgroundColor="#FFF0F2" color={COLORS.primary} />
+                <Text variant="titleLarge" style={{ fontWeight: 'bold', marginTop: 20, textAlign: 'center', color: '#212529' }}>
+                    Planificación de Cuadrillas
+                </Text>
+                <Text variant="bodyMedium" style={{ textAlign: 'center', color: '#6c757d', marginVertical: 15, lineHeight: 20 }}>
+                    Para poder crear una cuadrilla de amigos, unirte a un grupo existente mediante un código único y planificar vuestra agenda compartida de San Fermín, necesitas iniciar sesión.
+                </Text>
+                <Text style={{ fontStyle: 'italic', color: COLORS.primary, fontWeight: 'bold', textAlign: 'center' }}>
+                    💡 Inicia sesión desde la pestaña de Perfil
+                </Text>
             </View>
         );
     }
@@ -604,7 +637,11 @@ export default function CuadrillaScreen() {
                             }
 
                             // Orden cronológico ascendente
-                            return list.sort((a, b) => new Date(a.date) - new Date(b.date));
+                            return list.sort((a, b) => {
+                                if (!a.date) return 1;
+                                if (!b.date) return -1;
+                                return a.date.localeCompare(b.date);
+                            });
                         })()}
                         keyExtractor={(item) => item.id}
                         renderItem={renderizarPlanItem}

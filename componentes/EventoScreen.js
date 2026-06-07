@@ -61,25 +61,31 @@ export default function EventosScreen() {
     }, [userId]);
 
     // 4. LÓGICA DE FILTRADO COMBINADO (Buscador + Chips + Día)
-    const eventosFiltrados = listaEventos.filter(evento => {
-        const coincideBusqueda = evento.name.toLowerCase().includes(busqueda.toLowerCase());
-        const coincideCategoria = categoriaSeleccionada === 'Todos' || evento.category === categoriaSeleccionada;
+    const eventosFiltrados = listaEventos
+        .filter(evento => {
+            const coincideBusqueda = evento.name.toLowerCase().includes(busqueda.toLowerCase());
+            const coincideCategoria = categoriaSeleccionada === 'Todos' || evento.category === categoriaSeleccionada;
 
-        const coincideDia = diaSeleccionado === 'Todos' || (() => {
-            if (!evento.date) return false;
-            // Extracción segura de día y mes del string ISO (ej: "2025-07-06T12:00:00")
-            const partes = evento.date.split('T')[0].split('-');
-            if (partes.length === 3) {
-                const dayNum = parseInt(partes[2], 10);
-                const monthNum = parseInt(partes[1], 10);
-                const selectedDayNum = parseInt(diaSeleccionado.split(' ')[0], 10);
-                return dayNum === selectedDayNum && monthNum === 7;
-            }
-            return false;
-        })();
+            const coincideDia = diaSeleccionado === 'Todos' || (() => {
+                if (!evento.date) return false;
+                // Extracción segura de día y mes del string ISO (ej: "2025-07-06T12:00:00")
+                const partes = evento.date.split('T')[0].split('-');
+                if (partes.length === 3) {
+                    const dayNum = parseInt(partes[2], 10);
+                    const monthNum = parseInt(partes[1], 10);
+                    const selectedDayNum = parseInt(diaSeleccionado.split(' ')[0], 10);
+                    return dayNum === selectedDayNum && monthNum === 7;
+                }
+                return false;
+            })();
 
-        return coincideBusqueda && coincideCategoria && coincideDia;
-    });
+            return coincideBusqueda && coincideCategoria && coincideDia;
+        })
+        .sort((a, b) => {
+            if (!a.date) return 1;
+            if (!b.date) return -1;
+            return a.date.localeCompare(b.date);
+        });
 
     // Función auxiliar para asignar iconos a las tarjetas según su tipo
     const obtenerIconoCategoria = (category) => {
@@ -203,7 +209,24 @@ export default function EventosScreen() {
     const renderizarTarjetaEvento = ({ item }) => {
         const tieneIncidencia = !!item.incidencia;
         const esActivo = !tieneIncidencia;
-        const formatoHora = new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        let formatoHora = '';
+        let formatoDia = '';
+        if (item.date) {
+            const partes = item.date.split('T');
+            if (partes.length === 2) {
+                const fechaPartes = partes[0].split('-');
+                const horaPartes = partes[1].split(':');
+                if (fechaPartes.length === 3 && horaPartes.length >= 2) {
+                    formatoDia = `${fechaPartes[2]}/${fechaPartes[1]}`;
+                    formatoHora = `${horaPartes[0]}:${horaPartes[1]}`;
+                }
+            }
+        }
+        if (!formatoDia || !formatoHora) {
+            const fechaObj = new Date(item.date);
+            formatoHora = isNaN(fechaObj.getTime()) ? '' : fechaObj.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            formatoDia = isNaN(fechaObj.getTime()) ? '' : fechaObj.toLocaleDateString([], { day: '2-digit', month: '2-digit' });
+        }
         const imagenFondo = obtenerImagenTarjeta(item.category, item.name);
 
         return (
@@ -264,10 +287,10 @@ export default function EventosScreen() {
                                 </Text>
                             </View>
                             <Text style={styles.separadorDetalle}>•</Text>
-                            <View style={styles.subFilaDetalle}>
+                            <View style={[styles.subFilaDetalle, { maxWidth: undefined }]}>
                                 <MaterialCommunityIcons name="clock-outline" size={11} color="#6c757d" />
                                 <Text style={styles.textoDetalle}>
-                                    {formatoHora}
+                                    {formatoDia} • {formatoHora}
                                 </Text>
                             </View>
                         </View>
