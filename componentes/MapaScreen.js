@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator, Text, Modal, TouchableOpacity, Alert } from 'react-native';
 import MapView, { Marker } from 'react-native-maps';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchAlertas, validarIncidenciaRTDB, validarIncidenciaBanoRTDB, descartarIncidenciaRTDB, descartarIncidenciaBanoRTDB } from '../redux/ActionCreators';
+import { fetchAlertas, fetchEventos, validarIncidenciaRTDB, validarIncidenciaBanoRTDB, descartarIncidenciaRTDB, descartarIncidenciaBanoRTDB } from '../redux/ActionCreators';
 import { COLORS } from '../comun/comun';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
@@ -25,6 +25,13 @@ const calcularDistanciaMetros = (lat1, lon1, lat2, lon2) => {
 
 export default function MapaScreen() {
   const dispatch = useDispatch();
+
+  // Escuchamos el estado global de alertas, baños, eventos y del usuario logueado
+  const { alertas, banos, isLoading } = useSelector((state) => state.alertas);
+  const { resultado: listaEventos } = useSelector((state) => state.eventos);
+  const { datos: usuarioDatos, estaLogueado } = useSelector((state) => state.usuario);
+  const loggedInUserId = usuarioDatos?.uid || 'anonimo';
+
   const [pinSeleccionado, setPinSeleccionado] = React.useState(null);
   const [userLocation, setUserLocation] = React.useState(null);
   const [alertasValidadasLocales, setAlertasValidadasLocales] = React.useState([]);
@@ -37,16 +44,12 @@ export default function MapaScreen() {
       setTracksViewChanges(false);
     }, 3000);
     return () => clearTimeout(timer);
-  }, [alertas, banos, isLoading]);
-
-  // Escuchamos el estado global de alertas, baños y del usuario logueado
-  const { alertas, banos, isLoading } = useSelector((state) => state.alertas);
-  const { datos: usuarioDatos } = useSelector((state) => state.usuario);
-  const loggedInUserId = usuarioDatos?.uid || 'anonimo';
+  }, [alertas, banos, listaEventos, isLoading]);
 
   // Al cargar el mapa por primera vez, descargamos los puntos de Firebase y pedimos localización
   useEffect(() => {
     dispatch(fetchAlertas());
+    dispatch(fetchEventos());
 
     // Obtener la posición del usuario en tiempo real (GPS)
     (async () => {
@@ -101,9 +104,9 @@ export default function MapaScreen() {
   const tieneIncidenciaBano = esBano && !!pinSeleccionado.incidencia;
   const esCalleColapsada = pinSeleccionado && pinSeleccionado.tipo === 'Calle colapsada';
   const esAlerta = pinSeleccionado && (!!pinSeleccionado.timestamp || tieneIncidenciaBano);
-  
+
   const esCreador = pinSeleccionado && (
-    esBano 
+    esBano
       ? (tieneIncidenciaBano && loggedInUserId === pinSeleccionado.incidencia.userId)
       : (loggedInUserId === pinSeleccionado.userId)
   );
@@ -115,11 +118,12 @@ export default function MapaScreen() {
     pinSeleccionado.longitud || pinSeleccionado.lng
   ) : Infinity;
 
-  const puedeValidar = esCalleColapsada && !esCreador && (distancia < 100);
-  const puedeValidarBano = tieneIncidenciaBano && !esCreador && (distancia < 100);
+  const puedeValidar = estaLogueado && esCalleColapsada && !esCreador && (distancia < 100);
+  const puedeValidarBano = estaLogueado && tieneIncidenciaBano && !esCreador && (distancia < 100);
 
   // 2. Buscar si hay alguna alerta de calle colapsada cercana en el mapa para mostrar la tarjeta flotante directa
   const alertaCercana = alertas.find((alerta) => {
+    if (!estaLogueado) return false;
     if (alerta.tipo !== 'Calle colapsada') return false;
     if (loggedInUserId === alerta.userId) return false;
     if (alertasValidadasLocales.includes(alerta.id)) return false; // Ocultar si ya fue validada en esta sesión
@@ -153,8 +157,8 @@ export default function MapaScreen() {
       >
         {/* Renderizado de Baños Públicos (con marcador premium personalizado) */}
         {banos && banos.map((b) => {
-          const opacidad = b.incidencia 
-            ? obtenerOpacidadFiabilidad(b.incidencia.fiabilidad) 
+          const opacidad = b.incidencia
+            ? obtenerOpacidadFiabilidad(b.incidencia.fiabilidad)
             : 1.0;
 
           return (
@@ -189,7 +193,7 @@ export default function MapaScreen() {
           }
 
           const opacidad = obtenerOpacidadFiabilidad(alerta.fiabilidad);
-          
+
           let colorMarcador = '#E65100'; // Default naranja
           if (alerta.tipo === 'Calle colapsada') {
             colorMarcador = '#D32F2F'; // Rojo
@@ -216,6 +220,39 @@ export default function MapaScreen() {
                 { backgroundColor: colorMarcador }
               ]}>
                 <Text style={styles.marcadorEmojiAlert}>⚠️</Text>
+              </View>
+            </Marker>
+          );
+        })}
+
+        {/* Renderizado de Incidencias en Eventos/Actos */}
+        {listaEventos && listaEventos.filter(e => e.incidencia).map((evento) => {
+          const opacidad = obtenerOpacidadFiabilidad(evento.incidencia.fiabilidad);
+          return (
+            <Marker
+              key={`evento-incidencia-${evento.id}`}
+              coordinate={{
+                latitude: evento.lat,
+                longitude: evento.lng,
+              }}
+              opacity={opacidad}
+              tracksViewChanges={tracksViewChanges}
+              anchor={{ x: 0.5, y: 0.5 }}
+              onPress={() => {
+                setPinSeleccionado({
+                  ...evento.incidencia,
+                  tipo: 'Evento',
+                  calle: `Acto: ${evento.name}`,
+                  latitud: evento.lat,
+                  longitud: evento.lng,
+                });
+              }}
+            >
+              <View style={[
+                styles.marcadorContenedor,
+                { backgroundColor: '#0288D1' }
+              ]}>
+                <Text style={styles.marcadorEmoji}>🎭</Text>
               </View>
             </Marker>
           );

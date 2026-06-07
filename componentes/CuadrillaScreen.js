@@ -417,8 +417,7 @@ export default function CuadrillaScreen() {
                         mode={asiste ? "contained" : "outlined"}
                         onPress={() => gestionarAsistenciaPlan(item.id, asiste)}
                         style={styles.botonAsistencia}
-                        contentStyle={{ height: 32 }}
-                        labelStyle={{ fontSize: 11, fontWeight: 'bold' }}
+                        labelStyle={{ fontSize: 11, fontWeight: 'bold', marginVertical: 6, marginHorizontal: 12 }}
                         buttonColor={asiste ? "#388E3C" : undefined}
                         textColor={asiste ? "#ffffff" : COLORS.primary}
                         borderColor={asiste ? undefined : COLORS.primary}
@@ -1041,6 +1040,7 @@ const styles = StyleSheet.create({
     },
     filaFooterPlan: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         justifyContent: 'space-between',
         alignItems: 'center',
         paddingHorizontal: 12,
@@ -1052,16 +1052,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         flex: 1,
         marginRight: 10,
+        maxWidth: '70%',
     },
     textoAsistentesCount: {
         fontSize: 11.5,
         color: '#495057',
         flex: 1,
+        flexShrink: 1,
     },
     botonAsistencia: {
         borderRadius: 8,
-        paddingHorizontal: 22,
-        minWidth: 88,
+        minWidth: 100,
+        flexShrink: 0,
+        marginLeft: 8,
     },
 
     // Vacío

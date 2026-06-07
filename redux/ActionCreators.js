@@ -409,7 +409,7 @@ export const postIncidenciaBanoRTDB = (banoId, descripcion, userId) => (dispatch
         timestamp: new Date().toISOString()
     };
 
-    return fetch(`${baseUrlDb}baños/${banoId}/incidencia.json`, {
+    return fetch(`${baseUrlDb}ba%C3%B1os/${banoId}/incidencia.json`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(nuevaIncidencia)
@@ -432,7 +432,7 @@ export const postIncidenciaBanoRTDB = (banoId, descripcion, userId) => (dispatch
 export const validarIncidenciaBanoRTDB = (banoId) => (dispatch) => {
     const horaVoto = new Date().toISOString();
 
-    return fetch(`${baseUrlDb}baños/${banoId}/incidencia.json`, {
+    return fetch(`${baseUrlDb}ba%C3%B1os/${banoId}/incidencia.json`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -568,7 +568,7 @@ export const descartarIncidenciaRTDB = (alertaId) => (dispatch) => {
 
 // THUNK I: DESCARTAR INCIDENCIA DE BAÑO ("YA NO SIGUE AHÍ" / ELIMINACIÓN)
 export const descartarIncidenciaBanoRTDB = (banoId) => (dispatch) => {
-    return fetch(`${baseUrlDb}baños/${banoId}/incidencia.json`, {
+    return fetch(`${baseUrlDb}ba%C3%B1os/${banoId}/incidencia.json`, {
         method: 'DELETE'
     })
         .then(response => {

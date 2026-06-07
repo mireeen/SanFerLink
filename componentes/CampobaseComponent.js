@@ -87,7 +87,7 @@ class Campobase extends Component {
 
   AlertasNavegador = () => (
     <Stack.Navigator screenOptions={styles.opcionesHeader}>
-      <Stack.Screen name="ReportarIncidente" component={ReporteIncidenciaScreen} options={{ title: 'Alertas Comunidad', headerTitleAlign: 'center' }} />
+      <Stack.Screen name="ReportarIncidente" component={ReporteIncidenciaScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 
