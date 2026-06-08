@@ -18,8 +18,9 @@ import PerfilScreen from './PerfilScreen'; // ⬅️ Nueva pantalla de perfil
 import CuadrillaScreen from './CuadrillaScreen'; // ⬅️ Nueva pantalla de cuadrilla
 
 
-import { actualizarPresencia } from '../redux/ActionCreators';
+import { actualizarPresencia, usuarioLoginExito } from '../redux/ActionCreators';
 import { COLORS } from '../comun/comun';
+import * as SecureStore from 'expo-secure-store';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -29,7 +30,8 @@ const mapStateToProps = (state) => ({
 });
 
 const mapDispatchToProps = (dispatch) => ({
-  cambiarPresencia: (userId, estado) => dispatch(actualizarPresencia(userId, estado))
+  cambiarPresencia: (userId, estado) => dispatch(actualizarPresencia(userId, estado)),
+  iniciarSesionConDatos: (datos) => dispatch(usuarioLoginExito(datos))
 });
 
 const CustomHeader = ({ title }) => {
@@ -60,6 +62,19 @@ class Campobase extends Component {
   componentDidMount() {
     this.appStateSubscription = AppState.addEventListener('change', this.controlarCambioAppState);
     this.backHandler = BackHandler.addEventListener('hardwareBackPress', this.controlarBackPress);
+
+    // Intentar recuperar sesión persistida con SecureStore al iniciar
+    SecureStore.getItemAsync("userSession")
+      .then((session) => {
+        if (session) {
+          const parsed = JSON.parse(session);
+          console.log("Usuario autologueado desde SecureStore:", parsed.uid);
+          this.props.iniciarSesionConDatos(parsed);
+        }
+      })
+      .catch((error) => {
+        console.log("Error al recuperar la sesión de SecureStore:", error.message);
+      });
   }
 
   componentWillUnmount() {
@@ -153,7 +168,7 @@ class Campobase extends Component {
 
   BottomTabNavegador = () => (
     <Tab.Navigator
-      initialRouteName="MapaTab"
+      initialRouteName="EventosTab"
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: COLORS.primary,
@@ -186,12 +201,12 @@ class Campobase extends Component {
         }}
       />
         
-        {/* Nueva pestaña de Cuadrilla para planificar con amigos */}
+        {/* Nueva pestaña de Amigos para planificar en grupo */}
         <Tab.Screen
           name="CuadrillaTab"
           component={this.CuadrillaNavegador}
           options={{
-            title: 'Cuadrilla',
+            title: 'Amigos',
             tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="account-group" color={color} size={size} />,
           }}
         />

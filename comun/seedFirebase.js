@@ -871,77 +871,99 @@ const baños = {
   }
 };
 
-const getCurrentTimestamp = () => new Date().toISOString();
+const getCurrentTimestamp = () => new Date().getTime();
 
 const alertas = {
-  user_test_1: {
-    tipo: "Calle colapsada",
-    descripcion: "Estafeta recién colapsada durante el encierro. Muchísima densidad de gente.",
-    latitud: 42.8180,
-    longitud: -1.6433,
-    timestamp: getCurrentTimestamp(),
-    userId: "user_test_1"
-  },
+  
 
-  user_test_2: {
-    tipo: "Calle colapsada",
-    descripcion: "Mercaderes con flujo lento de personas, pero transitable.",
-    latitud: 42.8183,
-    longitud: -1.6444,
-    timestamp: getCurrentTimestamp(),
-    userId: "user_test_2"
-  },
+  
 
   user_test_3: {
+    calle: "Paseo Sarasate",
     tipo: "Calle colapsada",
-    descripcion: "Santo Domingo con acumulación antigua, la situación parece mejorar.",
-    latitud: 42.8189,
-    longitud: -1.6456,
+    descripcion: "Paseo Sarasate completamente lleno, especialmente en la zona de la fuente. Evitar si se puede.",
+    latitud: 42.81542219654759,
+    longitud: -1.6450727185001823,
     timestamp: getCurrentTimestamp(),
     userId: "user_test_3"
   },
 
   user_test_4: {
+    calle: "Calle Jarauta",
     tipo: "Calle colapsada",
     descripcion: "Jarauta completamente llena en zona de bares.",
-    latitud: 42.8195,
-    longitud: -1.6462,
+    latitud: 42.81835264007162, 
+    longitud: -1.6480246582813716,
     timestamp: getCurrentTimestamp(),
     userId: "user_test_4"
   },
 
   user_test_5: {
+    calle: "Calle Navarrería",
     tipo: "Calle colapsada",
-    descripcion: "Zona de Taconera con bastante afluencia, pero en movimiento.",
-    latitud: 42.8197,
-    longitud: -1.6510,
+    descripcion: "Ha habido algún problema y está cerrada.",
+    latitud: 42.81956264823931, 
+    longitud: -1.642269716561121,
     timestamp: getCurrentTimestamp(),
     userId: "user_test_5"
   },
 
   user_test_6: {
+    calle: "Calle Calderería",
     tipo: "Calle colapsada",
-    descripcion: "Plaza del Castillo con afluencia anterior ya reduciéndose.",
-    latitud: 42.8168,
-    longitud: -1.6435,
-    timestamp: getCurrentTimestamp(),
+    descripcion: "Calle caldera imposible.",
+    latitud: 42.81815837630921,
+    longitud:  -1.6418293915409223,
+    timestamp: getCurrentTimestamp()-5*60*1000,
     userId: "user_test_6"
   },
 
-  OuNIE3Jpf1avqi6lOf: {
+  user_test_7: {
+    calle: "Calle mayor",
     tipo: "Calle colapsada",
-    descripcion: "gidks",
-    latitud: 42.7993819,
-    longitud: -1.6355467,
-    timestamp: getCurrentTimestamp(),
-    userId: "1nssvfu9W8SOsTU5R7FYNKKPsfJ3"
+    descripcion: "Calle Mayor super llena",
+    latitud: 42.81770442060797,
+    longitud: -1.6474228423649075,
+    timestamp: getCurrentTimestamp()-4*60*1000,
+    userId: "user_test_7"
+    
   }
+};
+
+
+const zonasInteres = {
+  plaza_fueros: {
+    nombre: "Plaza de los Fueros",
+    lat: 42.80958563467546, 
+    lng: -1.6445088242341064
+  },
+
+
+  herri_sanferminak: {
+    nombre: "Herri Sanferminak (Plaza de la O)",
+    lat: 42.81815359679303,
+    lng:-1.6497527367179712
+  },
+
+  plaza_castillo: {
+    nombre: "Plaza del Castillo",
+    lat: 42.81702,
+    lng: -1.64296
+  },
+
+  plaza_ayuntamiento: {
+    nombre: "Plaza Consistorial (Ayuntamiento)",
+    lat: 42.81833630968007,
+    lng: -1.644036870023117
+  }
+
+   
 };
 
 async function seed() {
   try {
-    console.log("📦 Subiendo eventos...");
-    await set(ref(rtdb, "eventos"), eventos);
+    // console.log("📦 Subiendo eventos...");
+    // await set(ref(rtdb, "zonasInteres"), zonasInteres);
 
     //console.log("🚽 Subiendo baños...");
     //await set(ref(rtdb, "baños"), baños);
@@ -953,7 +975,7 @@ async function seed() {
     const snapshot = await get(alertasRef);
     console.log("¿Existe alertas?", snapshot.exists());
 
-    // Luego sube los datos (si no existe, Firebase lo crea)
+    // Luego sube los datos (}si no existe, Firebase lo crea)
     await set(alertasRef, alertas);
     console.log("✅ Alertas subidas correctamente");
 

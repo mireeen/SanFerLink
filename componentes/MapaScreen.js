@@ -1,11 +1,13 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View, ActivityIndicator, Text, Modal, TouchableOpacity, Alert } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Circle } from 'react-native-maps';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAlertas, fetchEventos, validarIncidenciaRTDB, validarIncidenciaBanoRTDB, descartarIncidenciaRTDB, descartarIncidenciaBanoRTDB } from '../redux/ActionCreators';
 import { COLORS } from '../comun/comun';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
+import { ref, onValue } from 'firebase/database';
+import { rtdb } from '../comun/firebase';
 
 // Helper function to calculate distance in meters between two GPS coordinates
 const calcularDistanciaMetros = (lat1, lon1, lat2, lon2) => {
@@ -36,6 +38,24 @@ export default function MapaScreen() {
   const [userLocation, setUserLocation] = React.useState(null);
   const [alertasValidadasLocales, setAlertasValidadasLocales] = React.useState([]);
   const [tracksViewChanges, setTracksViewChanges] = React.useState(true);
+  const [zonasInteres, setZonasInteres] = React.useState([]);
+
+  // Escuchar zonas de interés en tiempo real
+  useEffect(() => {
+    const zonasRef = ref(rtdb, 'zonasInteres');
+    const unsubscribeZonas = onValue(zonasRef, (snapshot) => {
+      const data = snapshot.val() || {};
+      const arrayZonas = Object.keys(data).map(key => ({
+        id: key,
+        ...data[key]
+      }));
+      setZonasInteres(arrayZonas);
+    }, (error) => {
+      console.error("Error al escuchar zonas de interés:", error);
+    });
+
+    return () => unsubscribeZonas();
+  }, []);
 
   // Optimización de rendimiento para evitar parpadeos y que los marcadores salten al moverse el usuario
   useEffect(() => {
@@ -225,38 +245,55 @@ export default function MapaScreen() {
           );
         })}
 
-        {/* Renderizado de Incidencias en Eventos/Actos */}
-        {listaEventos && listaEventos.filter(e => e.incidencia).map((evento) => {
-          const opacidad = obtenerOpacidadFiabilidad(evento.incidencia.fiabilidad);
+        {/* Renderizado de Círculos de Zonas de Interés */}
+        {zonasInteres && zonasInteres.map((zona) => {
+          const latitude = zona.latitud !== undefined ? zona.latitud : zona.lat;
+          const longitude = zona.longitud !== undefined ? zona.longitud : zona.lng;
+          if (latitude === undefined || longitude === undefined) return null;
+
+          return (
+            <Circle
+              key={`circulo-zona-${zona.id}`}
+              center={{ latitude, longitude }}
+              radius={40} // Radio de 20 metros
+              fillColor="rgba(103, 58, 183, 0.22)" // Morado muy suave translúcido
+              strokeColor="rgba(103, 58, 183, 0.65)" // Borde morado semi-transparente
+              strokeWidth={1.5}
+            />
+          );
+        })}
+
+        {/* Renderizado de Marcadores de Zonas de Interés */}
+        {zonasInteres && zonasInteres.map((zona) => {
+          const latitude = zona.latitud !== undefined ? zona.latitud : zona.lat;
+          const longitude = zona.longitud !== undefined ? zona.longitud : zona.lng;
+          if (latitude === undefined || longitude === undefined) return null;
+
           return (
             <Marker
-              key={`evento-incidencia-${evento.id}`}
-              coordinate={{
-                latitude: evento.lat,
-                longitude: evento.lng,
-              }}
-              opacity={opacidad}
-              tracksViewChanges={tracksViewChanges}
+              key={`marcador-zona-${zona.id}`}
+              coordinate={{ latitude, longitude }}
               anchor={{ x: 0.5, y: 0.5 }}
               onPress={() => {
                 setPinSeleccionado({
-                  ...evento.incidencia,
-                  tipo: 'Evento',
-                  calle: `Acto: ${evento.name}`,
-                  latitud: evento.lat,
-                  longitud: evento.lng,
+                  esZona: true,
+                  nombre: zona.nombre || zona.name || 'Zona de Interés',
+                  descripcion: zona.descripcion || 'Punto de interés destacado de las fiestas de San Fermín.',
+                  latitud: latitude,
+                  longitud: longitude,
                 });
               }}
             >
               <View style={[
                 styles.marcadorContenedor,
-                { backgroundColor: '#0288D1' }
+                { backgroundColor: '#673AB7' } // Color morado destacado para zonas de interés
               ]}>
-                <Text style={styles.marcadorEmoji}>🎭</Text>
+                <MaterialCommunityIcons name="office-building" size={16} color="#ffffff" />
               </View>
             </Marker>
           );
         })}
+
       </MapView>
 
       {/* ⚠️ TARJETA FLOTANTE PROACTIVA: Aparece directamente en el mapa si estás cerca de una calle colapsada */}
@@ -319,15 +356,22 @@ export default function MapaScreen() {
               <View style={styles.calloutBox}>
                 <View style={styles.contenedorTituloModal}>
                   <Text style={styles.emojiModal}>
-                    {esBano ? '🚽' : '⚠️'}
+                    {pinSeleccionado.esZona ? '🏛️' : (esBano ? '🚽' : '⚠️')}
                   </Text>
 
                   <Text style={styles.tituloAlertaNativo}>
-                    {esBano ? `Aseo: ${pinSeleccionado.name}` : (pinSeleccionado.calle || pinSeleccionado.tipo)}
+                    {pinSeleccionado.esZona
+                      ? pinSeleccionado.nombre
+                      : (esBano ? `Aseo: ${pinSeleccionado.name}` : (pinSeleccionado.calle || pinSeleccionado.tipo))
+                    }
                   </Text>
                 </View>
 
-                {esBano ? (
+                {pinSeleccionado.esZona ? (
+                  <Text style={styles.descripcionNativa}>
+                    {pinSeleccionado.descripcion || 'Punto de interés destacado de las fiestas de San Fermín.'}
+                  </Text>
+                ) : esBano ? (
                   tieneIncidenciaBano ? (
                     <>
                       <Text
