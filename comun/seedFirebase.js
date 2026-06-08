@@ -13,7 +13,429 @@ const eventos = {
     lng: -1.644,
     location: "Plaza Consistorial",
     date: "2025-07-06T12:00:00",
+    status: "active",
+    description: "Retransmitido por pantallas gigantes en la Plaza del Castillo, Paseo de Sarasate,  Parque de Antoniutti y Plaza de los Fueros."
+  },
+
+  musica_Calle: {
+    name: "Música en las Calles",
+    category: "Música",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Antoniutti, Plaza Consistorial y Paseo de Sarasate",
+    date: "2025-07-06T12:00:00",
+    status: "active",
+    description: "Txarangas Galtzagorri, Ziripot y Banda Popular Maestro Bravo. Salidas desde Antoniutti, Plaza Consistorial, y Paseo de Sarasate."
+  },
+
+  danzas: {
+    name: "Festival Folclórico",
+    category: "Tradición",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Plaza de los Fueros",
+    date: "2025-07-06T13:00:00",
+    status: "active",
+    description: "Grupos de danzas: Amaiur, Ardantzeta, Basakaitz, DanTXaldi, Duguna, Eluntze, Harizti, Iruña Taldea, Larratz, Mikelats, Muthiko Alaiak, Oberena, Ortzadar, Txori Zuri."
+  },
+
+  gigantes_cabezudos2: {
+    name: "Gigantes y Cabezudos",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Estación de Autobuses",
+    date: "2025-07-06T17:00:00",
+    status: "active",
+    description: "Salida de la comparsa desde la Estación de Autobuses."
+  },
+
+  juegos_infantiles: {
+    name: "Birjolastu JuegoRejuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Taconera",
+    date: "2025-07-06T18:00:00",
+    status: "active",
+    description: "Espacio de juego infantil. Hasta las 21:00 h."
+  },
+
+  juegos_infantiles2: {
+    name: "¡Menudas Fiestas!",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Plaza de la Libertad",
+    date: "2025-07-06T18:00:00",
+    status: "active",
+    description: "Actividades infantiles. Hasta las 21:00 h."
+  },
+
+  jotas: {
+    name: "Ronda de Jotas",
+    category: "Tradición",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Avenida Roncesvalles",
+    date: "2025-07-06T18:00:00",
+    status: "active",
+    description: "Monumento al Encierro. Escuela de jotas Manuel Turrillas."
+  },
+
+  rejones: {
+    name: "Corrida de Rejones",
+    category: "Tradición",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Plaza de Toros",
+    date: "2025-07-06T18:30:00",
+    status: "active",
+    description: "",
+  },
+
+  concierto_compañia2: {
+    name: "Odd Signals",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-06T19:00:00",
     status: "active"
+  },
+
+  titereak: {
+    name: "Títeres",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Plaza de la Libertad",
+    date: "2025-07-06T20:00:00",
+    status: "active",
+    description: "Ipuin Magikoak. Bihar Taldea (euskera).",
+  },
+
+  concierto_cruz: {
+    name: "Verbena",
+    category: "Concierto",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Plaza de la Cruz",
+    date: "2025-07-06T20:00:00",
+    status: "active",
+    description: "Orquesta Meteoro 2.0. Hasta las 22:00.",
+  },
+
+  musica_calle2: {
+    name: "Muévete, ven y baila",
+    category: "Música",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Avenida Roncesvalles",
+    date: "2025-07-06T20:30:00",
+    status: "active",
+    description: "En el Monumento al Encierro",
+  },
+
+  concierto_compañia3: {
+    name: "CC:DISCO!",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-06T20:30:00",
+    status: "active"
+  },
+
+  concierto_compañia4: {
+    name: "Celia Carrera",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-06T22:30:00",
+    status: "active"
+  },
+
+  concierto_compañia5: {
+    name: "Puttaneska",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-07T20:00:00",
+    status: "active"
+  },
+
+  concierto_compañia6: {
+    name: "Frente Cumbiero",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-07T23:30:00",
+    status: "active"
+  },
+
+  concierto_compañia7: {
+    name: "Burutik",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-08T20:00:00",
+    status: "active"
+  },
+
+  concierto_compañia8: {
+    name: "Tarta Relena",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-08T23:30:00",
+    status: "active"
+  },
+
+  concierto_compañia9: {
+    name: "La Mala Pékora",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-09T20:00:00",
+    status: "active"
+  },
+
+  concierto_compañia10: {
+    name: "The Zawose Queens",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-09T23:30:00",
+    status: "active"
+  },
+
+  concierto_compañia11: {
+    name: "Puntu Takoma",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-10T20:00:00",
+    status: "active"
+  },
+
+  concierto_compañia12: {
+    name: "Bibi Tanga & The Selenites",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-10T23:30:00",
+    status: "active"
+  },
+
+  concierto_compañia13: {
+    name: "Travéstika",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-11T12:30:00",
+    status: "active"
+  },
+
+  concierto_compañia14: {
+    name: "Euskoprincess",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-11T20:00:00",
+    status: "active"
+  },
+
+  concierto_compañia15: {
+    name: "Scientist feat Shanique Marie (Equiknoxx)",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-11T23:30:00",
+    status: "active"
+  },
+
+  concierto_compañia16: {
+    name: "Yaya Massemba",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-12T12:30:00",
+    status: "active"
+  },
+
+  concierto_compañia17: {
+    name: "Kumbia vs Salsa",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-12T20:00:00",
+    status: "active"
+  },
+
+  concierto_compañia18: {
+    name: "Instituto Mexicano del Sonido",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-12T23:30:00",
+    status: "active"
+  },
+
+  concierto_compañia19: {
+    name: "Sedientos de Cumbia",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-13T20:00:00",
+    status: "active"
+  },
+
+  concierto_compañia20: {
+    name: "Izo Fitzroy",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2026-07-13T23:30:00",
+    status: "active"
+  },
+
+  bailables: {
+    name: "Bailables",
+    category: "Tradición",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Plaza del Castillo",
+    date: "2026-07-06T21:00:00",
+    status: "active",
+    description: "Gaita y txistu.",
+  },
+
+  torico: {
+    name: "Toro de fuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Cuesta de Santo Domingo, Plaza Consistorial, calle Nueva",
+    date: "2026-07-06T21:45:00",
+    status: "active",
+    description: "",
+  },
+
+  torico2: {
+    name: "Toro de fuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Cuesta de Santo Domingo, Plaza Consistorial, calle Nueva",
+    date: "2026-07-07T21:45:00",
+    status: "active",
+    description: "",
+  },
+
+  torico3: {
+    name: "Toro de fuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Cuesta de Santo Domingo, Plaza Consistorial, calle Nueva",
+    date: "2026-07-08T21:45:00",
+    status: "active",
+    description: "",
+  },
+
+  torico4: {
+    name: "Toro de fuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Cuesta de Santo Domingo, Plaza Consistorial, calle Nueva",
+    date: "2026-07-09T21:45:00",
+    status: "active",
+    description: "",
+  },
+
+  torico5: {
+    name: "Toro de fuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Cuesta de Santo Domingo, Plaza Consistorial, calle Nueva",
+    date: "2026-07-10T21:45:00",
+    status: "active",
+    description: "",
+  },
+
+  torico6: {
+    name: "Toro de fuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Cuesta de Santo Domingo, Plaza Consistorial, calle Nueva",
+    date: "2026-07-11T21:45:00",
+    status: "active",
+    description: "",
+  },
+
+  torico7: {
+    name: "Toro de fuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Cuesta de Santo Domingo, Plaza Consistorial, calle Nueva",
+    date: "2026-07-12T21:45:00",
+    status: "active",
+    description: "",
+  },
+
+  torico8: {
+    name: "Toro de fuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Cuesta de Santo Domingo, Plaza Consistorial, calle Nueva",
+    date: "2026-07-13T21:45:00",
+    status: "active",
+    description: "",
+  },
+
+  torico9: {
+    name: "Toro de fuego",
+    category: "Infantil",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Cuesta de Santo Domingo, Plaza Consistorial, calle Nueva",
+    date: "2026-07-14T21:45:00",
+    status: "active",
+    description: "",
+  },
+
+  rejones: {
+    name: "Corrida de Rejones",
+    category: "Tradición",
+    lat: 42.8184,
+    lng: -1.644,
+    location: "Plaza de Toros",
+    date: "2025-07-06T18:30:00",
+    status: "active",
+    description: "",
   },
 
   encierro1: {
@@ -23,7 +445,7 @@ const eventos = {
     lng: -1.6452,
     location: "Santo Domingo",
     date: "2025-07-07T08:00:00",
-    status: "active"
+    status: "active",
   },
 
   encierro2: {
@@ -35,6 +457,60 @@ const eventos = {
     date: "2025-07-08T08:00:00",
     status: "active"
   },
+  encierro3: {
+    name: "Tercer Encierro",
+    category: "Encierro",
+    lat: 42.8187,
+    lng: -1.6452,
+    location: "Santo Domingo",
+    date: "2025-07-09T08:00:00",
+    status: "active",
+  },
+  encierro4: {
+    name: "Cuarto Encierro",
+    category: "Encierro",
+    lat: 42.8187,
+    lng: -1.6452,
+    location: "Santo Domingo",
+    date: "2025-07-10T08:00:00",
+    status: "active",
+  },
+  encierro5: {
+    name: "Quinto Encierro",
+    category: "Encierro",
+    lat: 42.8187,
+    lng: -1.6452,
+    location: "Santo Domingo",
+    date: "2025-07-11T08:00:00",
+    status: "active",
+  },
+  encierro6: {
+    name: "Sexto Encierro",
+    category: "Encierro",
+    lat: 42.8187,
+    lng: -1.6452,
+    location: "Santo Domingo",
+    date: "2025-07-12T08:00:00",
+    status: "active",
+  },
+  encierro7: {
+    name: "Séptimo Encierro",
+    category: "Encierro",
+    lat: 42.8187,
+    lng: -1.6452,
+    location: "Santo Domingo",
+    date: "2025-07-13T08:00:00",
+    status: "active",
+  },
+  encierro8: {
+    name: "Octavo Encierro",
+    category: "Encierro",
+    lat: 42.8187,
+    lng: -1.6452,
+    location: "Santo Domingo",
+    date: "2025-07-14T08:00:00",
+    status: "active",
+  },
 
   procesion: {
     name: "Procesión San Fermín",
@@ -42,7 +518,7 @@ const eventos = {
     lat: 42.8191,
     lng: -1.6433,
     location: "Catedral",
-    date: "2025-07-07T10:00:00",
+    date: "2026-07-07T10:00:00",
     status: "active"
   },
 
@@ -52,6 +528,16 @@ const eventos = {
     lat: 42.8168,
     lng: -1.6435,
     location: "Plaza del Castillo",
+    date: "2025-07-09T22:00:00",
+    status: "active"
+  },
+
+  concierto_compañia: {
+    name: "Concierto Plaza del Castillo",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
     date: "2025-07-09T22:00:00",
     status: "active"
   },
@@ -75,13 +561,76 @@ const eventos = {
     date: "2025-07-14T00:00:00",
     status: "active"
   },
-  diana_7julio: {
+  dianas1: {
     name: "Dianas",
     category: "Tradición",
     lat: 42.8182,
     lng: -1.6443,
     location: "Casco Viejo",
-    date: "2025-07-07T06:45:00",
+    date: "2026-07-07T06:45:00",
+    status: "active"
+  },
+  dianas2: {
+    name: "Dianas",
+    category: "Tradición",
+    lat: 42.8182,
+    lng: -1.6443,
+    location: "Casco Viejo",
+    date: "2026-07-08T06:45:00",
+    status: "active"
+  },
+  dianas3: {
+    name: "Dianas",
+    category: "Tradición",
+    lat: 42.8182,
+    lng: -1.6443,
+    location: "Casco Viejo",
+    date: "2026-07-09T06:45:00",
+    status: "active"
+  },
+  dianas4: {
+    name: "Dianas",
+    category: "Tradición",
+    lat: 42.8182,
+    lng: -1.6443,
+    location: "Casco Viejo",
+    date: "2026-07-10T06:45:00",
+    status: "active"
+  },
+  dianas5: {
+    name: "Dianas",
+    category: "Tradición",
+    lat: 42.8182,
+    lng: -1.6443,
+    location: "Casco Viejo",
+    date: "2026-07-11T06:45:00",
+    status: "active"
+  },
+  dianas6: {
+    name: "Dianas",
+    category: "Tradición",
+    lat: 42.8182,
+    lng: -1.6443,
+    location: "Casco Viejo",
+    date: "2026-07-12T06:45:00",
+    status: "active"
+  },
+  dianas7: {
+    name: "Dianas",
+    category: "Tradición",
+    lat: 42.8182,
+    lng: -1.6443,
+    location: "Casco Viejo",
+    date: "2026-07-13T06:45:00",
+    status: "active"
+  },
+  dianas8: {
+    name: "Dianas",
+    category: "Tradición",
+    lat: 42.8182,
+    lng: -1.6443,
+    location: "Casco Viejo",
+    date: "2026-07-14T06:45:00",
     status: "active"
   },
 
@@ -231,6 +780,16 @@ const eventos = {
     lng: -1.6490,
     location: "Parque Antoniutti",
     date: "2025-07-12T21:30:00",
+    status: "active"
+  },
+
+  concierto_compañia3: {
+    name: "Concierto Plaza del Castillo",
+    category: "Concierto",
+    lat: 42.8168,
+    lng: -1.6435,
+    location: "Plaza Compañía",
+    date: "2025-07-09T22:00:00",
     status: "active"
   },
 

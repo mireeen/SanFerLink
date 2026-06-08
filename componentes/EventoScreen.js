@@ -28,6 +28,7 @@ export default function EventosScreen() {
     const [eventoPlanificado, setEventoPlanificado] = useState(null);
     const [notaPlan, setNotaPlan] = useState('');
     const [guardandoPlan, setGuardandoPlan] = useState(false);
+    const [descripcionesExpandidas, setDescripcionesExpandidas] = useState({}); // Para rastrear descripciones expandidas
 
     // Categorías disponibles para los Chips de filtrado
     const categorias = ['Todos', 'Encierro', 'Concierto', 'Tradición', 'Infantil'];
@@ -295,8 +296,8 @@ export default function EventosScreen() {
                             </View>
                         </View>
 
-                        {/* Descripción del Acto (2 líneas para legibilidad) */}
-                        <Text style={styles.descripcionTarjeta} numberOfLines={2}>
+                        {/* Descripción del Acto - Se expande completamente */}
+                        <Text style={styles.descripcionTarjeta}>
                             {item.description}
                         </Text>
                     </View>
@@ -648,7 +649,7 @@ const styles = StyleSheet.create({
     filaTarjeta: {
         flexDirection: 'row',
         alignItems: 'stretch',
-        height: 105,
+        height: 160,
     },
     contenedorImagenIzquierda: {
         width: 130, // Imagen más ancha ocupando cerca de la mitad
@@ -667,7 +668,7 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 10,
         paddingHorizontal: 12,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
     },
     filaCategoria: {
         flexDirection: 'row',
