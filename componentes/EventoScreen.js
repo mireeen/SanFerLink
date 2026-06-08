@@ -668,7 +668,7 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingVertical: 10,
         paddingHorizontal: 12,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
     },
     filaCategoria: {
         flexDirection: 'row',
