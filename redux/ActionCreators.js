@@ -2,6 +2,7 @@ import * as ActionTypes from './ActionTypes';
 import { rtdb, db, firebaseConfig } from '../comun/firebase';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { ref, onValue, set, onDisconnect } from 'firebase/database';
+import * as SecureStore from 'expo-secure-store';
 
 
 export const postAlerta = (tipo, descripcion, userId) => async (dispatch) => {
@@ -47,9 +48,16 @@ export const usuarioLoginFallo = (errmess) => ({
     payload: errmess
 });
 
-export const usuarioCerrarSesion = () => ({
-    type: ActionTypes.USUARIO_CERRAR_SESION
-});
+export const usuarioCerrarSesion = () => (dispatch) => {
+    SecureStore.deleteItemAsync("userSession")
+        .then(() => {
+            dispatch({ type: ActionTypes.USUARIO_CERRAR_SESION });
+        })
+        .catch(error => {
+            console.log("Error al borrar la sesión de SecureStore:", error.message);
+            dispatch({ type: ActionTypes.USUARIO_CERRAR_SESION });
+        });
+};
 
 // --- THUNK REAL CON FIREBASE HTTP POST ---
 export const postRegistroFirebase = (correo, contrasena) => (dispatch) => {
@@ -98,6 +106,10 @@ export const postRegistroFirebase = (correo, contrasena) => (dispatch) => {
                 email: data.email,
                 token: data.idToken // Por si lo necesitáis para el Realtime Database más adelante
             };
+
+            // Guardamos la sesión en el móvil de forma segura
+            SecureStore.setItemAsync("userSession", JSON.stringify(datosUsuarioLogueado))
+                .catch(err => console.log("Error al guardar la sesión (registro):", err.message));
 
             // Guardamos el usuario en Redux y quitamos el estado de carga
             dispatch(usuarioLoginExito(datosUsuarioLogueado));
@@ -154,6 +166,10 @@ export const postLoginFirebase = (correo, contrasena) => (dispatch) => {
                 email: data.email,
                 token: data.idToken
             };
+
+            // Guardamos la sesión en el móvil de forma segura
+            SecureStore.setItemAsync("userSession", JSON.stringify(datosUsuarioLogueado))
+                .catch(err => console.log("Error al guardar la sesión (login):", err.message));
 
             // Guardamos el usuario en Redux y quitamos el cargando. 
             // Reutilizamos 'usuarioLoginExito' porque al Reducer le da igual si vino de login o registro
